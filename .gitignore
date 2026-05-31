@@ -12,3 +12,4 @@ templates/*.png
 .vscode/
 Thumbs.db
 desktop.ini
+gui.py
