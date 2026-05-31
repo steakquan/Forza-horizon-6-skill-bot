@@ -41,6 +41,9 @@ class BotGUI:
         # Keep references to thumbnail images to prevent garbage collection
         self.thumbnails = {}
         
+        # Track visible windows
+        self.windows_map = {}
+        
         # Thread safety control for hotkeys
         self.hotkey_stop_event = threading.Event()
         self.hotkey_thread = None
@@ -59,6 +62,7 @@ class BotGUI:
         self.log_message("系統初始化完成。")
         self.check_opencv_status()
         self.update_all_thumbnails()
+        self.refresh_windows_list()
 
     def check_opencv_status(self):
         global cv2
@@ -142,11 +146,24 @@ class BotGUI:
         grid_frame = tk.Frame(settings_card, bg="#252533")
         grid_frame.pack(fill="x", padx=15, pady=(0, 15))
         
-        # 1. Game Window Title
-        tk.Label(grid_frame, text="遊戲視窗標題:", fg="#a0a0b0", bg="#252533", anchor="w").grid(row=0, column=0, sticky="w", pady=5)
-        self.entry_window_title = tk.Entry(grid_frame, bg="#15151c", fg="#ffffff", insertbackground="#ffffff", relief="flat", width=22)
-        self.entry_window_title.insert(0, self.bot.game_window_title)
-        self.entry_window_title.grid(row=0, column=1, sticky="w", padx=(10, 0), pady=5)
+        # 1. Game Window Title Dropdown
+        tk.Label(grid_frame, text="選擇遊戲視窗:", fg="#a0a0b0", bg="#252533", anchor="w").grid(row=0, column=0, sticky="w", pady=5)
+        
+        # Subframe for Combobox + Refresh button
+        win_select_frame = tk.Frame(grid_frame, bg="#252533")
+        win_select_frame.grid(row=0, column=1, sticky="w", padx=(10, 0), pady=5)
+        
+        self.combo_windows = ttk.Combobox(win_select_frame, width=22, state="readonly")
+        self.combo_windows.pack(side="left")
+        self.combo_windows.bind("<<ComboboxSelected>>", self.on_window_selected)
+        
+        self.btn_refresh_windows = tk.Button(win_select_frame, text="🔄", font=("Segoe UI", 8), bg="#4b5563", fg="#ffffff", activebackground="#374151", relief="flat", padx=5, pady=1, command=self.refresh_windows_list)
+        self.btn_refresh_windows.pack(side="left", padx=(5, 0))
+        
+        # 1.5. Always on top lock Checkbutton
+        self.is_topmost_var = tk.BooleanVar(value=False)
+        self.chk_topmost = tk.Checkbutton(grid_frame, text="視窗強制置頂", variable=self.is_topmost_var, fg="#a0a0b0", bg="#252533", selectcolor="#15151c", activebackground="#252533", activeforeground="#a0a0b0", font=("Segoe UI", 9), command=self.toggle_topmost)
+        self.chk_topmost.grid(row=0, column=2, sticky="w", padx=(10, 0), pady=5)
         
         # 2. Race duration
         tk.Label(grid_frame, text="單局賽事秒數:", fg="#a0a0b0", bg="#252533", anchor="w").grid(row=1, column=0, sticky="w", pady=5)
@@ -267,18 +284,19 @@ class BotGUI:
         try:
             duration = float(self.entry_duration.get())
             threshold = float(self.entry_threshold.get())
-            window_title = self.entry_window_title.get()
+            window_title = self.combo_windows.get()
             
             if duration <= 0:
                 raise ValueError("秒數必須大於 0")
             if not (0.1 <= threshold <= 1.0):
                 raise ValueError("相似度門檻必須在 0.1 到 1.0 之間")
-            if not window_title.strip():
-                raise ValueError("遊戲視窗標題不能為空")
+            if not window_title:
+                raise ValueError("未選擇遊戲視窗")
                 
             self.bot.race_duration = duration
             self.bot.threshold = threshold
             self.bot.game_window_title = window_title
+            self.bot.selected_hwnd = self.windows_map.get(window_title)
             
             self.log_message(f"設定已儲存：賽事時間 {duration} 秒，相似門檻 {threshold}，視窗標題「{window_title}」")
             messagebox.showinfo("成功", "設定參數已儲存！")
@@ -290,7 +308,9 @@ class BotGUI:
         try:
             self.bot.race_duration = float(self.entry_duration.get())
             self.bot.threshold = float(self.entry_threshold.get())
-            self.bot.game_window_title = self.entry_window_title.get()
+            window_title = self.combo_windows.get()
+            self.bot.game_window_title = window_title
+            self.bot.selected_hwnd = self.windows_map.get(window_title)
         except ValueError:
             pass
             
@@ -312,6 +332,87 @@ class BotGUI:
             self.bot.start()
             self.btn_start.config(state="disabled")
             self.btn_stop.config(state="normal")
+
+    def refresh_windows_list(self):
+        """Refreshes the dropdown list with visible windows."""
+        self.windows_map = {}
+        window_list = []
+        
+        def enum_windows_callback(hwnd, extra):
+            if win32gui.IsWindowVisible(hwnd):
+                title = win32gui.GetWindowText(hwnd)
+                if title and title != "Program Manager" and title != self.root.title():
+                    rect = win32gui.GetWindowRect(hwnd)
+                    w = rect[2] - rect[0]
+                    h = rect[3] - rect[1]
+                    if w > 100 and h > 100:
+                        window_list.append((title, hwnd))
+                        
+        win32gui.EnumWindows(enum_windows_callback, None)
+        window_list.sort(key=lambda x: x[0].lower())
+        
+        titles = []
+        for title, hwnd in window_list:
+            display_title = title
+            if display_title in self.windows_map:
+                display_title = f"{title} (HWND: {hwnd})"
+            self.windows_map[display_title] = hwnd
+            titles.append(display_title)
+            
+        self.combo_windows["values"] = titles
+        
+        # Auto-select Forza
+        for title in titles:
+            if "forza" in title.lower():
+                self.combo_windows.set(title)
+                self.bot.game_window_title = title
+                self.bot.selected_hwnd = self.windows_map[title]
+                break
+        else:
+            if titles:
+                self.combo_windows.set(titles[0])
+                self.bot.game_window_title = titles[0]
+                self.bot.selected_hwnd = self.windows_map[titles[0]]
+                
+        self.log_message(f"已整理目前電腦上的視窗列表（共 {len(titles)} 個）")
+
+    def on_window_selected(self, event):
+        selected_title = self.combo_windows.get()
+        if selected_title:
+            self.bot.game_window_title = selected_title
+            self.bot.selected_hwnd = self.windows_map.get(selected_title)
+            # Reset topmost when switching windows
+            self.is_topmost_var.set(False)
+            self.log_message(f"已選擇遊戲視窗：{selected_title}")
+
+    def toggle_topmost(self):
+        """Toggles the topmost status of the selected window."""
+        selected_title = self.combo_windows.get()
+        if not selected_title:
+            messagebox.showwarning("警告", "請先選擇一個視窗！")
+            self.is_topmost_var.set(False)
+            return
+            
+        hwnd = self.windows_map.get(selected_title)
+        if not hwnd or not win32gui.IsWindow(hwnd):
+            messagebox.showerror("錯誤", "找不到該視窗的有效控制代碼 (HWND)，請重新整理列表。")
+            self.is_topmost_var.set(False)
+            return
+            
+        enable = self.is_topmost_var.get()
+        try:
+            if enable:
+                win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0,
+                                     win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW)
+                self.log_message(f"已將視窗「{selected_title}」強制置頂顯示。")
+            else:
+                win32gui.SetWindowPos(hwnd, win32con.HWND_NOTOPMOST, 0, 0, 0, 0,
+                                     win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW)
+                self.log_message(f"已取消視窗「{selected_title}」的置頂顯示。")
+        except Exception as e:
+            self.log_message(f"置頂控制失敗: {e}")
+            messagebox.showerror("錯誤", f"無法設定置頂狀態: {e}")
+            self.is_topmost_var.set(False)
             
     def stop_bot(self):
         if self.bot.is_running:

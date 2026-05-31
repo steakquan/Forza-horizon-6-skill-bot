@@ -26,6 +26,7 @@ class ForzaBot:
         self.threshold = 0.8       # similarity threshold
         self.check_interval = 1.0  # check screen every X seconds
         self.game_window_title = "Forza Horizon" # Substring to find window
+        self.selected_hwnd = None                # Explicit HWND from GUI
         
         self.state = "IDLE"  # IDLE, WAIT_FOR_SETTLEMENT, WAIT_FOR_CONFIRM, WAIT_FOR_START_EVENT, RACING
         self.is_running = False
@@ -50,6 +51,11 @@ class ForzaBot:
 
     def find_game_window(self):
         """Finds the window handle and rect for the game."""
+        # If we have an explicit hwnd selected and it is valid, use it directly
+        if self.selected_hwnd and win32gui.IsWindow(self.selected_hwnd):
+            if not win32gui.IsIconic(self.selected_hwnd):
+                return self.selected_hwnd, win32gui.GetWindowRect(self.selected_hwnd)
+
         hwnd_list = []
         def win_enum_handler(hwnd, ctx):
             if win32gui.IsWindowVisible(hwnd):
