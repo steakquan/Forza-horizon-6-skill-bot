@@ -226,8 +226,8 @@ class ForzaBot:
                     if match:
                         x, y, conf = match
                         self.log(f"偵測到【是】確認按鈕 (置信度: {conf:.2f})")
-                        self.log(f"滑鼠點擊座標 ({x}, {y})...")
-                        direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.1)
+                        self.log("發送鍵盤 'Enter' 按鍵確認重新開始...")
+                        direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.15)
                         self.update_state("WAIT_FOR_START_EVENT")
                         # 等待場景轉跳
                         time.sleep(3.0)

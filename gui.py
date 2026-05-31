@@ -171,6 +171,11 @@ class BotGUI:
         self.entry_duration.insert(0, str(int(self.bot.race_duration)))
         self.entry_duration.grid(row=1, column=1, sticky="w", padx=(10, 0), pady=5)
         
+        # 2.5. Prevent deactivation Checkbutton
+        self.prevent_deactivate_var = tk.BooleanVar(value=False)
+        self.chk_prevent_deactivate = tk.Checkbutton(grid_frame, text="背景維持聚焦 (防止停用)", variable=self.prevent_deactivate_var, fg="#a0a0b0", bg="#252533", selectcolor="#15151c", activebackground="#252533", activeforeground="#a0a0b0", font=("Segoe UI", 9), command=self.toggle_prevent_deactivate)
+        self.chk_prevent_deactivate.grid(row=1, column=2, sticky="w", padx=(10, 0), pady=5)
+        
         # 3. Match threshold
         tk.Label(grid_frame, text="辨識相似門檻 (0.5~1):", fg="#a0a0b0", bg="#252533", anchor="w").grid(row=2, column=0, sticky="w", pady=5)
         self.entry_threshold = tk.Entry(grid_frame, bg="#15151c", fg="#ffffff", insertbackground="#ffffff", relief="flat", width=10)
@@ -413,6 +418,18 @@ class BotGUI:
             self.log_message(f"置頂控制失敗: {e}")
             messagebox.showerror("錯誤", f"無法設定置頂狀態: {e}")
             self.is_topmost_var.set(False)
+
+    def toggle_prevent_deactivate(self):
+        """Logs the toggle of prevent deactivation state."""
+        enable = self.prevent_deactivate_var.get()
+        selected_title = self.combo_windows.get()
+        if enable:
+            if selected_title:
+                self.log_message(f"已啟用視窗「{selected_title}」的背景維持聚焦（防止停用）功能。")
+            else:
+                self.log_message("已啟用背景維持聚焦功能（請先選擇視窗）。")
+        else:
+            self.log_message("已停用背景維持聚焦功能。")
             
     def stop_bot(self):
         if self.bot.is_running:
@@ -535,15 +552,25 @@ class BotGUI:
 
     def refresh_timer(self):
         """Periodic UI updates."""
-        # Update remaining time if racing
-        if self.bot.state == "RACING":
-            # Find the active bot run elapsed time
-            # Since the countdown is handled in bot's thread, we can estimate it, or just show text
-            # To make it dynamic, let's keep it simple
-            pass
-            
-        # Schedule next tick
-        self.root.after(1000, self.refresh_timer)
+        # Prevent window deactivation if enabled (DisplayFusion-like behavior)
+        if hasattr(self, 'prevent_deactivate_var') and self.prevent_deactivate_var.get():
+            selected_title = self.combo_windows.get()
+            if selected_title:
+                hwnd = self.windows_map.get(selected_title)
+                if hwnd and win32gui.IsWindow(hwnd):
+                    try:
+                        # Send active messages (like DisplayFusion)
+                        # WM_NCACTIVATE = 0x0086
+                        # WM_ACTIVATE = 0x0006
+                        # WM_ACTIVATEAPP = 0x001C
+                        win32gui.PostMessage(hwnd, 0x0086, 1, 0)
+                        win32gui.PostMessage(hwnd, 0x0006, 1, 0)
+                        win32gui.PostMessage(hwnd, 0x001C, 1, 0)
+                    except Exception:
+                        pass
+                        
+        # Schedule next tick every 500ms
+        self.root.after(500, self.refresh_timer)
 
     def on_closing(self):
         # Stop bot
