@@ -165,7 +165,33 @@ class ForzaBot:
 
     def _run_loop(self):
         """Main execution loop."""
-        self.update_state("WAIT_FOR_SETTLEMENT")
+        # Wait for CV2 to load if needed
+        while cv2 is None and self.is_running:
+            time.sleep(1.0)
+            
+        if not self.is_running:
+            return
+
+        self.log("正在分析當前遊戲畫面，嘗試自動判定所處階段...")
+        
+        detected_state = "WAIT_FOR_SETTLEMENT"
+        try:
+            # We check yes.png first as a confirmation prompt is distinct in the center
+            if self.find_template_on_screen("yes.png"):
+                detected_state = "WAIT_FOR_CONFIRM"
+                self.log("自動判定成功：目前處於【確認重新開始彈窗】")
+            elif self.find_template_on_screen("restart.png"):
+                detected_state = "WAIT_FOR_SETTLEMENT"
+                self.log("自動判定成功：目前處於【結算畫面】")
+            elif self.find_template_on_screen("start.png"):
+                detected_state = "WAIT_FOR_START_EVENT"
+                self.log("自動判定成功：目前處於【賽事準備起跑畫面】")
+            else:
+                self.log("未偵測到已知特徵，預設進入【等待結算畫面】偵測狀態。")
+        except Exception as e:
+            self.log(f"自動判定階段發生異常: {e}，預設進入【等待結算畫面】")
+            
+        self.update_state(detected_state)
         
         while self.is_running:
             try:
