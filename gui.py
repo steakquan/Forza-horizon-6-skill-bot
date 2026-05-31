@@ -26,12 +26,15 @@ HOTKEY_STOP_ID = 101
 VK_F10 = 0x79  # F10 key
 VK_F11 = 0x7A  # F11 key
 
+FONT_FAMILY = "Microsoft JhengHei"
+
 class BotGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Forza Horizon 6 刷技能點小助手")
-        self.root.geometry("820x680")
+        self.root.geometry("640x580")
         self.root.configure(bg="#1a1a22")
+        self.root.resizable(False, False)
         
         # Initialize the bot
         self.bot = ForzaBot()
@@ -84,178 +87,181 @@ class BotGUI:
         style.configure("TFrame", background="#1a1a22")
         style.configure("Card.TFrame", background="#252533", relief="flat")
         
+        # Notebook styling
+        style.configure("TNotebook", background="#1a1a22", borderwidth=0)
+        style.configure("TNotebook.Tab", background="#252533", foreground="#a0a0b0", font=(FONT_FAMILY, 10, "bold"), padding=[18, 6])
+        style.map("TNotebook.Tab",
+                  background=[("selected", "#00e5ff"), ("active", "#2e2e3d")],
+                  foreground=[("selected", "#1a1a22"), ("active", "#ffffff")])
+        
         # Scrollbar styling
         style.configure("Vertical.TScrollbar", background="#2a2a38", troughcolor="#15151d", bordercolor="#1a1a22", arrowcolor="#ffffff")
 
     def build_ui(self):
-        # 1. Title bar (cyberpunk theme header)
-        header_frame = tk.Frame(self.root, bg="#111116", height=60)
+        # Header (Minimalist title + indicator)
+        header_frame = tk.Frame(self.root, bg="#111116", height=50)
         header_frame.pack(fill="x", side="top")
         
-        title_label = tk.Label(header_frame, text="FORZA HORIZON 6 SKILL BOT", font=("Segoe UI", 16, "bold"), fg="#00e5ff", bg="#111116")
-        title_label.pack(side="left", padx=20, pady=15)
+        title_label = tk.Label(header_frame, text="FORZA HORIZON 6 SKILL BOT", font=(FONT_FAMILY, 14, "bold"), fg="#00e5ff", bg="#111116")
+        title_label.pack(side="left", padx=15, pady=10)
         
         # Status indicator dot
-        self.status_dot = tk.Canvas(header_frame, width=15, height=15, bg="#111116", highlightthickness=0)
-        self.status_dot.pack(side="right", padx=(0, 20), pady=20)
-        self.draw_status_dot("#ff007f") # Red for stopped
+        self.status_dot = tk.Canvas(header_frame, width=12, height=12, bg="#111116", highlightthickness=0)
+        self.status_dot.pack(side="right", padx=(0, 15), pady=18)
+        self.draw_status_dot("#ef4444") # Red for stopped
         
-        self.status_text = tk.Label(header_frame, text="已停止 (IDLE)", font=("Segoe UI", 10, "bold"), fg="#ff007f", bg="#111116")
-        self.status_text.pack(side="right", padx=10, pady=20)
+        self.status_text = tk.Label(header_frame, text="已停止 (IDLE)", font=(FONT_FAMILY, 9, "bold"), fg="#ef4444", bg="#111116")
+        self.status_text.pack(side="right", padx=8, pady=15)
         
-        # Main Container
-        main_frame = ttk.Frame(self.root, style="TFrame")
-        main_frame.pack(fill="both", expand=True, padx=15, pady=15)
+        # Main Tab Container
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill="both", expand=True, padx=12, pady=12)
         
-        # Left Panel (Status & Controls & Settings)
-        left_panel = ttk.Frame(main_frame, style="TFrame")
-        left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10))
+        # Create Tab Frames
+        self.tab_dash = ttk.Frame(self.notebook, style="TFrame")
+        self.tab_settings = ttk.Frame(self.notebook, style="TFrame")
+        self.tab_calib = ttk.Frame(self.notebook, style="TFrame")
         
-        # Right Panel (Template Management)
-        right_panel = ttk.Frame(main_frame, style="TFrame", width=300)
-        right_panel.pack(side="right", fill="both", padx=(10, 0))
-        right_panel.pack_propagate(False)
+        self.notebook.add(self.tab_dash, text=" 運行儀表板 ")
+        self.notebook.add(self.tab_settings, text=" 參數設定 ")
+        self.notebook.add(self.tab_calib, text=" 圖像校準 ")
         
-        # --- LEFT PANEL CONTENTS ---
+        # Build contents for each tab
+        self.build_dash_tab()
+        self.build_settings_tab()
+        self.build_calib_tab()
+
+    def build_dash_tab(self):
+        # 1. State card
+        state_card = ttk.Frame(self.tab_dash, style="Card.TFrame")
+        state_card.pack(fill="x", padx=10, pady=(10, 5))
         
-        # Active State Card
-        state_card = ttk.Frame(left_panel, style="Card.TFrame")
-        state_card.pack(fill="x", pady=(0, 10))
+        state_title = tk.Label(state_card, text="當前執行狀態", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533")
+        state_title.pack(anchor="w", padx=15, pady=(8, 2))
         
-        state_title = tk.Label(state_card, text="當前執行狀態", font=("Segoe UI", 10), fg="#a0a0b0", bg="#252533")
-        state_title.pack(anchor="w", padx=15, pady=(10, 2))
+        self.state_desc = tk.Label(state_card, text="未啟動 - 請按 F10 鍵或點擊下方啟動按鈕", font=(FONT_FAMILY, 12, "bold"), fg="#ffffff", bg="#252533")
+        self.state_desc.pack(anchor="w", padx=15, pady=(0, 8))
         
-        self.state_desc = tk.Label(state_card, text="未啟動 - 請按下「啟動腳本」或 F10 鍵", font=("Segoe UI", 13, "bold"), fg="#ffffff", bg="#252533")
-        self.state_desc.pack(anchor="w", padx=15, pady=(0, 15))
+        # 2. Control Buttons
+        btn_frame = tk.Frame(self.tab_dash, bg="#1a1a22")
+        btn_frame.pack(fill="x", padx=10, pady=5)
         
-        # Control Buttons Card
-        btn_card = ttk.Frame(left_panel, style="Card.TFrame")
-        btn_card.pack(fill="x", pady=(0, 10))
+        self.btn_start = tk.Button(btn_frame, text="啟動腳本 (F10)", font=(FONT_FAMILY, 10, "bold"), bg="#10b981", fg="#ffffff", activebackground="#059669", activeforeground="#ffffff", relief="flat", padx=15, pady=6, command=self.start_bot)
+        self.btn_start.pack(side="left", fill="x", expand=True, padx=(0, 5))
         
-        self.btn_start = tk.Button(btn_card, text="啟動腳本 (F10)", font=("Segoe UI", 11, "bold"), bg="#10b981", fg="#ffffff", activebackground="#059669", activeforeground="#ffffff", relief="flat", padx=20, pady=8, command=self.start_bot)
-        self.btn_start.pack(side="left", padx=15, pady=15, fill="x", expand=True)
+        self.btn_stop = tk.Button(btn_frame, text="停止腳本 (F11)", font=(FONT_FAMILY, 10, "bold"), bg="#ef4444", fg="#ffffff", activebackground="#dc2626", activeforeground="#ffffff", relief="flat", padx=15, pady=6, command=self.stop_bot)
+        self.btn_stop.pack(side="right", fill="x", expand=True, padx=(5, 0))
         
-        self.btn_stop = tk.Button(btn_card, text="停止腳本 (F11)", font=("Segoe UI", 11, "bold"), bg="#ef4444", fg="#ffffff", activebackground="#dc2626", activeforeground="#ffffff", relief="flat", padx=20, pady=8, command=self.stop_bot)
-        self.btn_stop.pack(side="right", padx=15, pady=15, fill="x", expand=True)
+        # 3. Terminal Log
+        log_frame = ttk.Frame(self.tab_dash, style="Card.TFrame")
+        log_frame.pack(fill="both", expand=True, padx=10, pady=(5, 10))
         
-        # Settings Card
-        settings_card = ttk.Frame(left_panel, style="Card.TFrame")
-        settings_card.pack(fill="x", pady=(0, 10))
+        log_title = tk.Label(log_frame, text="實時運行日誌", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533")
+        log_title.pack(anchor="w", padx=15, pady=(6, 4))
         
-        settings_title = tk.Label(settings_card, text="參數設定項目", font=("Segoe UI", 11, "bold"), fg="#00e5ff", bg="#252533")
-        settings_title.pack(anchor="w", padx=15, pady=(10, 10))
+        self.log_text = tk.Text(log_frame, bg="#15151c", fg="#2efb57", insertbackground="#ffffff", relief="flat", font=("Consolas", 9), wrap="word")
+        self.log_text.pack(fill="both", expand=True, padx=15, pady=(0, 10))
+
+    def build_settings_tab(self):
+        settings_card = ttk.Frame(self.tab_settings, style="Card.TFrame")
+        settings_card.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Grid layout for settings
+        settings_title = tk.Label(settings_card, text="自動化參數配置", font=(FONT_FAMILY, 11, "bold"), fg="#00e5ff", bg="#252533")
+        settings_title.pack(anchor="w", padx=15, pady=(12, 10))
+        
         grid_frame = tk.Frame(settings_card, bg="#252533")
-        grid_frame.pack(fill="x", padx=15, pady=(0, 15))
+        grid_frame.pack(fill="both", expand=True, padx=15, pady=5)
         
-        # 1. Game Window Title Dropdown
-        tk.Label(grid_frame, text="選擇遊戲視窗:", fg="#a0a0b0", bg="#252533", anchor="w").grid(row=0, column=0, sticky="w", pady=5)
+        # Row 0: Window selection
+        tk.Label(grid_frame, text="選擇遊戲視窗:", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533", anchor="w").grid(row=0, column=0, sticky="w", pady=8)
         
-        # Subframe for Combobox + Refresh button
         win_select_frame = tk.Frame(grid_frame, bg="#252533")
-        win_select_frame.grid(row=0, column=1, sticky="w", padx=(10, 0), pady=5)
+        win_select_frame.grid(row=0, column=1, sticky="w", padx=(10, 0), pady=8)
         
-        self.combo_windows = ttk.Combobox(win_select_frame, width=22, state="readonly")
+        self.combo_windows = ttk.Combobox(win_select_frame, width=24, state="readonly", font=(FONT_FAMILY, 9))
         self.combo_windows.pack(side="left")
         self.combo_windows.bind("<<ComboboxSelected>>", self.on_window_selected)
         
-        self.btn_refresh_windows = tk.Button(win_select_frame, text="🔄", font=("Segoe UI", 8), bg="#4b5563", fg="#ffffff", activebackground="#374151", relief="flat", padx=5, pady=1, command=self.refresh_windows_list)
-        self.btn_refresh_windows.pack(side="left", padx=(5, 0))
+        self.btn_refresh_windows = tk.Button(win_select_frame, text="🔄 重新整理", font=(FONT_FAMILY, 8), bg="#4b5563", fg="#ffffff", activebackground="#374151", relief="flat", padx=6, pady=1, command=self.refresh_windows_list)
+        self.btn_refresh_windows.pack(side="left", padx=(6, 0))
         
-        # 1.5. Always on top lock Checkbutton
         self.is_topmost_var = tk.BooleanVar(value=False)
-        self.chk_topmost = tk.Checkbutton(grid_frame, text="視窗強制置頂", variable=self.is_topmost_var, fg="#a0a0b0", bg="#252533", selectcolor="#15151c", activebackground="#252533", activeforeground="#a0a0b0", font=("Segoe UI", 9), command=self.toggle_topmost)
-        self.chk_topmost.grid(row=0, column=2, sticky="w", padx=(10, 0), pady=5)
+        self.chk_topmost = tk.Checkbutton(grid_frame, text="視窗強制置頂", variable=self.is_topmost_var, fg="#a0a0b0", bg="#252533", selectcolor="#15151c", activebackground="#252533", activeforeground="#a0a0b0", font=(FONT_FAMILY, 9), command=self.toggle_topmost)
+        self.chk_topmost.grid(row=0, column=2, sticky="w", padx=(15, 0), pady=8)
         
-        # 2. Race duration
-        tk.Label(grid_frame, text="單局賽事秒數:", fg="#a0a0b0", bg="#252533", anchor="w").grid(row=1, column=0, sticky="w", pady=5)
-        self.entry_duration = tk.Entry(grid_frame, bg="#15151c", fg="#ffffff", insertbackground="#ffffff", relief="flat", width=10)
+        # Row 1: Duration & Background Mode
+        tk.Label(grid_frame, text="單局賽事秒數:", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533", anchor="w").grid(row=1, column=0, sticky="w", pady=8)
+        self.entry_duration = tk.Entry(grid_frame, bg="#15151c", fg="#ffffff", insertbackground="#ffffff", relief="flat", width=12, font=(FONT_FAMILY, 9))
         self.entry_duration.insert(0, str(int(self.bot.race_duration)))
-        self.entry_duration.grid(row=1, column=1, sticky="w", padx=(10, 0), pady=5)
+        self.entry_duration.grid(row=1, column=1, sticky="w", padx=(10, 0), pady=8)
         
-        # 2.5. Prevent deactivation Checkbutton
         self.prevent_deactivate_var = tk.BooleanVar(value=False)
-        self.chk_prevent_deactivate = tk.Checkbutton(grid_frame, text="背景維持聚焦 (防止停用)", variable=self.prevent_deactivate_var, fg="#a0a0b0", bg="#252533", selectcolor="#15151c", activebackground="#252533", activeforeground="#a0a0b0", font=("Segoe UI", 9), command=self.toggle_prevent_deactivate)
-        self.chk_prevent_deactivate.grid(row=1, column=2, sticky="w", padx=(10, 0), pady=5)
+        self.chk_prevent_deactivate = tk.Checkbutton(grid_frame, text="背景維持聚焦 (防止停用)", variable=self.prevent_deactivate_var, fg="#a0a0b0", bg="#252533", selectcolor="#15151c", activebackground="#252533", activeforeground="#a0a0b0", font=(FONT_FAMILY, 9), command=self.toggle_prevent_deactivate)
+        self.chk_prevent_deactivate.grid(row=1, column=2, sticky="w", padx=(15, 0), pady=8)
         
-        # 3. Match threshold
-        tk.Label(grid_frame, text="辨識相似門檻 (0.5~1):", fg="#a0a0b0", bg="#252533", anchor="w").grid(row=2, column=0, sticky="w", pady=5)
-        self.entry_threshold = tk.Entry(grid_frame, bg="#15151c", fg="#ffffff", insertbackground="#ffffff", relief="flat", width=10)
+        # Row 2: Threshold
+        tk.Label(grid_frame, text="辨識相似門檻:", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533", anchor="w").grid(row=2, column=0, sticky="w", pady=8)
+        self.entry_threshold = tk.Entry(grid_frame, bg="#15151c", fg="#ffffff", insertbackground="#ffffff", relief="flat", width=12, font=(FONT_FAMILY, 9))
         self.entry_threshold.insert(0, str(self.bot.threshold))
-        self.entry_threshold.grid(row=2, column=1, sticky="w", padx=(10, 0), pady=5)
+        self.entry_threshold.grid(row=2, column=1, sticky="w", padx=(10, 0), pady=8)
         
-        # 4. Auto-Stop Timer Dropdown
-        tk.Label(grid_frame, text="自動停止定時:", fg="#a0a0b0", bg="#252533", anchor="w").grid(row=3, column=0, sticky="w", pady=5)
-        self.combo_timer = ttk.Combobox(grid_frame, width=10, state="readonly", values=["不限時", "1 小時", "1.5 小時", "2 小時", "3 小時"])
+        # Row 3: Auto stop timer
+        tk.Label(grid_frame, text="自動停止定時:", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533", anchor="w").grid(row=3, column=0, sticky="w", pady=8)
+        self.combo_timer = ttk.Combobox(grid_frame, width=10, state="readonly", values=["不限時", "1 小時", "1.5 小時", "2 小時", "3 小時"], font=(FONT_FAMILY, 9))
         self.combo_timer.set("不限時")
-        self.combo_timer.grid(row=3, column=1, sticky="w", padx=(10, 0), pady=5)
+        self.combo_timer.grid(row=3, column=1, sticky="w", padx=(10, 0), pady=8)
         
-        self.lbl_countdown = tk.Label(grid_frame, text="", fg="#ff007f", bg="#252533", font=("Segoe UI", 9, "bold"))
-        self.lbl_countdown.grid(row=3, column=2, sticky="w", padx=(10, 0), pady=5)
+        self.lbl_countdown = tk.Label(grid_frame, text="", fg="#ff007f", bg="#252533", font=(FONT_FAMILY, 9, "bold"))
+        self.lbl_countdown.grid(row=3, column=2, sticky="w", padx=(15, 0), pady=8)
         
-        # Save Settings Button
-        self.btn_save_settings = tk.Button(grid_frame, text="儲存設定", font=("Segoe UI", 9), bg="#4b5563", fg="#ffffff", activebackground="#374151", activeforeground="#ffffff", relief="flat", padx=10, pady=2, command=self.save_settings)
-        self.btn_save_settings.grid(row=4, column=1, sticky="e", pady=(10, 0))
+        # Save Button
+        self.btn_save_settings = tk.Button(grid_frame, text="儲存並套用設定", font=(FONT_FAMILY, 9, "bold"), bg="#3b82f6", fg="#ffffff", activebackground="#2563eb", activeforeground="#ffffff", relief="flat", padx=15, pady=4, command=self.save_settings)
+        self.btn_save_settings.grid(row=4, column=1, sticky="e", pady=(20, 0))
+
+    def build_calib_tab(self):
+        template_card = ttk.Frame(self.tab_calib, style="Card.TFrame")
+        template_card.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Console Log Card
-        log_card = ttk.Frame(left_panel, style="Card.TFrame")
-        log_card.pack(fill="both", expand=True)
+        temp_title = tk.Label(template_card, text="圖像匹配模板校準與設定", font=(FONT_FAMILY, 11, "bold"), fg="#00e5ff", bg="#252533")
+        temp_title.pack(anchor="w", padx=15, pady=(12, 5))
         
-        log_title = tk.Label(log_card, text="實時日誌監控 (F10/F11 全域快捷鍵生效中)", font=("Segoe UI", 10), fg="#a0a0b0", bg="#252533")
-        log_title.pack(anchor="w", padx=15, pady=(10, 5))
+        inst_text = tk.Label(template_card, text="如果辨識不準，請在遊戲執行至對應畫面時點擊「擷取」，然後在跳出的截圖中框選目標文字區域。", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533", justify="left")
+        inst_text.pack(anchor="w", padx=15, pady=(0, 10))
         
-        self.log_text = tk.Text(log_card, bg="#15151c", fg="#2efb57", insertbackground="#ffffff", relief="flat", font=("Consolas", 9), wrap="word")
-        self.log_text.pack(fill="both", expand=True, padx=15, pady=(0, 15))
-        
-        # --- RIGHT PANEL CONTENTS (TEMPLATE MANAGEMENT) ---
-        
-        template_card = ttk.Frame(right_panel, style="Card.TFrame")
-        template_card.pack(fill="both", expand=True)
-        
-        temp_title = tk.Label(template_card, text="圖像匹配模板校準", font=("Segoe UI", 11, "bold"), fg="#00e5ff", bg="#252533")
-        temp_title.pack(anchor="w", padx=15, pady=(10, 10))
-        
-        # Instruction text
-        inst_text = tk.Label(template_card, text="說明：如果偵測不到按鈕，請在遊戲執行對應畫面時點擊「擷取」，GUI會隱藏並讓您拖曳框選正確區域。", font=("Segoe UI", 9), fg="#a0a0b0", bg="#252533", wrap=270, justify="left")
-        inst_text.pack(anchor="w", padx=15, pady=(0, 15))
-        
-        # Template list
+        # Grid list for template items
         self.temp_items = [
             ("restart.png", "重新開始字樣", "等待結算畫面出現此字樣以重新開始"),
-            ("yes.png", "確認選單「是」", "確認重新開始對話框的「是」按鈕"),
-            ("start.png", "開始賽事字樣", "即將開始賽事時，按下Enter的字樣")
+            ("yes.png", "確認選單「是」", "確認重新開始對話框的「是」按鈕（偵測後模擬 Enter）"),
+            ("start.png", "開始賽事字樣", "即將開始賽事時，按下 Enter 的字樣")
         ]
         
         self.temp_frames = {}
         for filename, title, desc in self.temp_items:
-            # Create widget container for each template
             item_frame = tk.Frame(template_card, bg="#1e1e28", bd=1, relief="solid", highlightthickness=0)
             item_frame.pack(fill="x", padx=15, pady=5)
             
-            # Subtitle
-            lbl_title = tk.Label(item_frame, text=title, font=("Segoe UI", 9, "bold"), fg="#ffffff", bg="#1e1e28")
+            # Title
+            lbl_title = tk.Label(item_frame, text=title, font=(FONT_FAMILY, 9, "bold"), fg="#ffffff", bg="#1e1e28")
             lbl_title.pack(anchor="w", padx=8, pady=(4, 0))
             
-            # Details and thumbnail subframe
+            # Subframe for contents
             detail_frame = tk.Frame(item_frame, bg="#1e1e28")
             detail_frame.pack(fill="x", padx=8, pady=4)
             
-            # Thumbnail Canvas
-            thumb_canvas = tk.Canvas(detail_frame, width=60, height=45, bg="#15151c", highlightthickness=1, highlightbackground="#3e3e4f")
+            # Thumbnail
+            thumb_canvas = tk.Canvas(detail_frame, width=50, height=35, bg="#15151c", highlightthickness=1, highlightbackground="#3e3e4f")
             thumb_canvas.pack(side="left", padx=(0, 10))
             
-            # Text and button subframe
+            # Text information & button
             info_btn_frame = tk.Frame(detail_frame, bg="#1e1e28")
-            info_btn_frame.pack(side="left", fill="both", expand=True, padx=(8, 0))
+            info_btn_frame.pack(side="left", fill="both", expand=True)
             
-            lbl_desc = tk.Label(info_btn_frame, text=desc, font=("Segoe UI", 7), fg="#808090", bg="#1e1e28", justify="left", wrap=140)
-            lbl_desc.pack(anchor="w", fill="x")
+            lbl_desc = tk.Label(info_btn_frame, text=desc, font=(FONT_FAMILY, 8), fg="#808090", bg="#1e1e28", justify="left")
+            lbl_desc.pack(anchor="w", pady=(0, 2))
             
-            btn_cap = tk.Button(info_btn_frame, text="擷取", font=("Segoe UI", 8), bg="#00e5ff", fg="#1a1a22", activebackground="#00b8cc", activeforeground="#1a1a22", relief="flat", padx=8, pady=1, command=lambda fn=filename: self.capture_template(fn))
-            btn_cap.pack(anchor="sw", pady=(4, 0))
+            btn_cap = tk.Button(info_btn_frame, text=" 重新擷取模板 ", font=(FONT_FAMILY, 8), bg="#00e5ff", fg="#1a1a22", activebackground="#00b8cc", activeforeground="#1a1a22", relief="flat", padx=8, pady=1, command=lambda fn=filename: self.capture_template(fn))
+            btn_cap.pack(anchor="w")
             
-            # Save widgets reference for updates
             self.temp_frames[filename] = {
                 "canvas": thumb_canvas,
                 "label": lbl_title
@@ -263,7 +269,7 @@ class BotGUI:
 
     def draw_status_dot(self, color):
         self.status_dot.delete("all")
-        self.status_dot.create_oval(2, 2, 13, 13, fill=color, outline="")
+        self.status_dot.create_oval(2, 2, 10, 10, fill=color, outline="")
 
     def log_message(self, message):
         """Thread-safe logging to the text widget."""
@@ -278,7 +284,7 @@ class BotGUI:
             if state == "IDLE":
                 self.draw_status_dot("#ef4444") # Red
                 self.status_text.config(text="已停止 (IDLE)", fg="#ef4444")
-                self.state_desc.config(text="未啟動 - 請按下「啟動腳本」或 F10 鍵", fg="#ffffff")
+                self.state_desc.config(text="未啟動 - 請按 F10 鍵或點擊下方啟動按鈕", fg="#ffffff")
             elif state == "WAIT_FOR_SETTLEMENT":
                 self.draw_status_dot("#00e5ff") # Cyan
                 self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
@@ -369,6 +375,14 @@ class BotGUI:
                 
             self.btn_start.config(state="disabled")
             self.btn_stop.config(state="normal")
+            
+    def stop_bot(self):
+        if self.bot.is_running:
+            self.bot.stop()
+            self.auto_stop_target_time = None
+            self.lbl_countdown.config(text="")
+            self.btn_start.config(state="normal")
+            self.btn_stop.config(state="disabled")
 
     def refresh_windows_list(self):
         """Refreshes the dropdown list with visible windows."""
@@ -462,14 +476,6 @@ class BotGUI:
                 self.log_message("已啟用背景維持聚焦功能（請先選擇視窗）。")
         else:
             self.log_message("已停用背景維持聚焦功能。")
-            
-    def stop_bot(self):
-        if self.bot.is_running:
-            self.bot.stop()
-            self.auto_stop_target_time = None
-            self.lbl_countdown.config(text="")
-            self.btn_start.config(state="normal")
-            self.btn_stop.config(state="disabled")
 
     # Template Capture System
     def capture_template(self, filename):
@@ -480,14 +486,11 @@ class BotGUI:
             return
             
         self.log_message(f"開始擷取模板 {filename}... 視窗即將隱藏...")
-        # 1. Hide the GUI main window
         self.root.withdraw()
         self.root.update()
         
-        # 2. Wait for GUI window to hide and game to settle
         time.sleep(0.6)
         
-        # 3. Capture screen (prioritize game window)
         hwnd, rect = self.bot.find_game_window()
         offset = (0, 0)
         
@@ -504,9 +507,7 @@ class BotGUI:
             screenshot = ImageGrab.grab()
             self.log_message("找不到遊戲視窗，擷取全螢幕畫面。")
             
-        # 4. Open fullscreen cropper
         def on_crop_finished(success, result):
-            # Restore GUI window
             self.root.deiconify()
             self.root.update()
             
@@ -517,7 +518,6 @@ class BotGUI:
                 self.log_message(f"模板擷取失敗或取消：{result}")
                 
         save_path = os.path.join(self.bot.templates_dir, filename)
-        # We spawn the cropping overlay
         CropOverlay(self.root, screenshot, save_path, on_crop_finished)
 
     def update_all_thumbnails(self):
@@ -527,28 +527,23 @@ class BotGUI:
     def update_thumbnail(self, filename):
         path = os.path.join(self.bot.templates_dir, filename)
         canvas = self.temp_frames[filename]["canvas"]
-        
-        # Clear canvas
         canvas.delete("all")
         
         if os.path.exists(path):
             try:
                 img = Image.open(path)
-                # Resize to fit 60x45 canvas
-                img.thumbnail((60, 45))
-                # Convert to PhotoImage and save reference
+                # Resize to fit 50x35 canvas
+                img.thumbnail((50, 35))
                 tk_img = ImageTk.PhotoImage(img)
                 self.thumbnails[filename] = tk_img
                 
-                # Draw on canvas center
-                canvas.create_image(30, 22, image=tk_img)
-                self.temp_frames[filename]["label"].config(fg="#2efb57") # Change title to green (loaded)
+                canvas.create_image(25, 17, image=tk_img)
+                self.temp_frames[filename]["label"].config(fg="#2efb57")
             except Exception as e:
                 self.log_message(f"無法載入模板預覽 {filename}: {e}")
         else:
-            # Draw placeholder cross/warning
-            canvas.create_line(15, 22, 45, 22, fill="#ef4444", width=2)
-            canvas.create_text(30, 22, text="未設定", fill="#ef4444", font=("Segoe UI", 7))
+            canvas.create_line(12, 17, 38, 17, fill="#ef4444", width=2)
+            canvas.create_text(25, 17, text="未設定", fill="#ef4444", font=(FONT_FAMILY, 7))
             self.temp_frames[filename]["label"].config(fg="#ffffff")
 
     # Global Hotkey Listener System
@@ -558,7 +553,6 @@ class BotGUI:
         self.hotkey_thread.start()
 
     def _hotkey_loop(self):
-        # Register hotkeys
         if not user32.RegisterHotKey(None, HOTKEY_START_ID, 0, VK_F10):
             self.log_message("警告: 無法註冊全域啟動快捷鍵 F10 (可能被佔用)")
         if not user32.RegisterHotKey(None, HOTKEY_STOP_ID, 0, VK_F11):
@@ -566,8 +560,6 @@ class BotGUI:
             
         msg = wintypes.MSG()
         while not self.hotkey_stop_event.is_set():
-            # GetMessage Blocks, so it has low CPU usage
-            # Returns non-zero if a message is retrieved
             r = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
             if r != 0:
                 if msg.message == win32con.WM_HOTKEY:
@@ -580,7 +572,6 @@ class BotGUI:
                 user32.TranslateMessage(ctypes.byref(msg))
                 user32.DispatchMessageW(ctypes.byref(msg))
                 
-        # Unregister when exit
         user32.UnregisterHotKey(None, HOTKEY_START_ID)
         user32.UnregisterHotKey(None, HOTKEY_STOP_ID)
 
@@ -612,10 +603,6 @@ class BotGUI:
                 hwnd = self.windows_map.get(selected_title)
                 if hwnd and win32gui.IsWindow(hwnd):
                     try:
-                        # Send active messages (like DisplayFusion)
-                        # WM_NCACTIVATE = 0x0086
-                        # WM_ACTIVATE = 0x0006
-                        # WM_ACTIVATEAPP = 0x001C
                         win32gui.PostMessage(hwnd, 0x0086, 1, 0)
                         win32gui.PostMessage(hwnd, 0x0006, 1, 0)
                         win32gui.PostMessage(hwnd, 0x001C, 1, 0)
@@ -626,12 +613,9 @@ class BotGUI:
         self.root.after(500, self.refresh_timer)
 
     def on_closing(self):
-        # Stop bot
         if self.bot.is_running:
             self.bot.stop()
-        # Stop hotkey thread
         self.hotkey_stop_event.set()
-        # Post a dummy window message to break user32.GetMessageW block in hotkey thread
         user32.PostThreadMessageW(self.hotkey_thread.ident, win32con.WM_QUIT, 0, 0)
         self.root.destroy()
 
@@ -643,33 +627,23 @@ class CropOverlay:
         self.save_path = save_path
         self.callback = callback
         
-        # Open a fullscreen top-level window
         self.top = tk.Toplevel(parent)
         self.top.attributes("-fullscreen", True)
         self.top.attributes("-topmost", True)
         
-        # Load screenshot dimensions
         self.width = screenshot.width
         self.height = screenshot.height
         
-        # Setup Canvas
         self.canvas = tk.Canvas(self.top, width=self.width, height=self.height, cursor="cross")
         self.canvas.pack(fill="both", expand=True)
         
-        # Display image
         self.tk_img = ImageTk.PhotoImage(screenshot)
         self.canvas.create_image(0, 0, anchor="nw", image=self.tk_img)
         
-        # Draw dark semi-transparent veil
-        # Note: Pure transparency with PIL overlay is slow, drawing a simple dark outline is safer
-        # Let's draw an instruction label at the top
-        self.inst_lbl = self.canvas.create_text(self.width // 2, 30, text="按住滑鼠左鍵並拖曳來框選按鈕文字區域。按 ESC 取消選取。", fill="#ef4444", font=("Segoe UI", 14, "bold"))
-        # Add black outline to text for readability
+        self.inst_lbl = self.canvas.create_text(self.width // 2, 30, text="按住滑鼠左鍵並拖曳來框選按鈕文字區域。按 ESC 取消選取。", fill="#ef4444", font=(FONT_FAMILY, 12, "bold"))
         self.canvas.create_rectangle(self.width // 2 - 250, 10, self.width // 2 + 250, 50, fill="#15151c", outline="#00e5ff", width=1)
-        # Bring text to top
         self.canvas.tag_raise(self.inst_lbl)
         
-        # Binds
         self.canvas.bind("<ButtonPress-1>", self.on_press)
         self.canvas.bind("<B1-Motion>", self.on_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
@@ -678,7 +652,6 @@ class CropOverlay:
         self.start_y = None
         self.rect_id = None
         
-        # Esc to cancel
         self.top.bind("<Escape>", lambda e: self.close(False, "User cancelled"))
 
     def on_press(self, event):
@@ -704,7 +677,6 @@ class CropOverlay:
         h = y2 - y1
         
         if w > 5 and h > 5:
-            # Crop region
             try:
                 cropped = self.screenshot.crop((x1, y1, x2, y2))
                 os.makedirs(os.path.dirname(self.save_path), exist_ok=True)
@@ -722,6 +694,5 @@ class CropOverlay:
 if __name__ == "__main__":
     root = tk.Tk()
     app = BotGUI(root)
-    # Handle window close button
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.mainloop()
