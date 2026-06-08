@@ -143,6 +143,24 @@ class BotGUI:
         self.state_desc = tk.Label(state_card, text="未啟動 - 請按 F10 鍵或點擊下方啟動按鈕", font=(FONT_FAMILY, 12, "bold"), fg="#ffffff", bg="#252533")
         self.state_desc.pack(anchor="w", padx=15, pady=(0, 8))
         
+        # Mode Selection Card
+        mode_card = ttk.Frame(self.tab_dash, style="Card.TFrame")
+        mode_card.pack(fill="x", padx=10, pady=(5, 5))
+        
+        mode_title = tk.Label(mode_card, text="選擇掛機模式項目", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533")
+        mode_title.pack(anchor="w", padx=15, pady=(6, 2))
+        
+        radio_frame = tk.Frame(mode_card, bg="#252533")
+        radio_frame.pack(anchor="w", padx=15, pady=(0, 8))
+        
+        self.bot_mode_var = tk.StringVar(value="RACE_FARM")
+        
+        self.rad_race = tk.Radiobutton(radio_frame, text="自動刷賽事技能點", variable=self.bot_mode_var, value="RACE_FARM", fg="#ffffff", bg="#252533", selectcolor="#15151c", activebackground="#252533", activeforeground="#ffffff", font=(FONT_FAMILY, 9), command=self.on_mode_changed)
+        self.rad_race.pack(side="left", padx=(0, 20))
+        
+        self.rad_buy = tk.Radiobutton(radio_frame, text="自動購買車輛 (Lamborghini Revuelto)", variable=self.bot_mode_var, value="CAR_BUY", fg="#ffffff", bg="#252533", selectcolor="#15151c", activebackground="#252533", activeforeground="#ffffff", font=(FONT_FAMILY, 9), command=self.on_mode_changed)
+        self.rad_buy.pack(side="left")
+        
         # 2. Control Buttons
         btn_frame = tk.Frame(self.tab_dash, bg="#1a1a22")
         btn_frame.pack(fill="x", padx=10, pady=5)
@@ -226,20 +244,47 @@ class BotGUI:
         self.btn_save_settings.grid(row=4, column=1, sticky="e", pady=(20, 0))
 
     def build_calib_tab(self):
-        template_card = ttk.Frame(self.tab_calib, style="Card.TFrame")
-        template_card.pack(fill="both", expand=True, padx=10, pady=10)
+        # Create a scrollable container for templates
+        canvas = tk.Canvas(self.tab_calib, bg="#1a1a22", highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self.tab_calib, orient="vertical", command=canvas.yview)
         
+        template_card = ttk.Frame(canvas, style="Card.TFrame")
+        
+        # Configure scrollbar and canvas binding
+        canvas_window = canvas.create_window((0, 0), window=template_card, anchor="nw")
+        
+        def on_canvas_configure(event):
+            canvas.itemconfig(canvas_window, width=event.width)
+            
+        def on_frame_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            
+        canvas.bind("<Configure>", on_canvas_configure)
+        template_card.bind("<Configure>", on_frame_configure)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Enable mousewheel scrolling on Calib tab canvas
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", lambda e: _on_mousewheel(e) if self.notebook.select() == self.notebook.tabs()[2] else None)
+        
+        scrollbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True, padx=5, pady=5)
+
         temp_title = tk.Label(template_card, text="圖像匹配模板校準與設定", font=(FONT_FAMILY, 11, "bold"), fg="#00e5ff", bg="#252533")
         temp_title.pack(anchor="w", padx=15, pady=(12, 5))
         
         inst_text = tk.Label(template_card, text="如果辨識不準，請在遊戲執行至對應畫面時點擊「擷取」，然後在跳出的截圖中框選目標文字區域。", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533", justify="left")
         inst_text.pack(anchor="w", padx=15, pady=(0, 10))
         
-        # Grid list for template items
+        # Grid list for template items (Both Race Farm and Car Buy templates)
         self.temp_items = [
             ("restart.png", "重新開始字樣", "等待結算畫面出現此字樣以重新開始"),
             ("yes.png", "確認選單「是」", "確認重新開始對話框的「是」按鈕（偵測後模擬 Enter）"),
-            ("start.png", "開始賽事字樣", "即將開始賽事時，按下 Enter 的字樣")
+            ("start.png", "開始賽事字樣", "即將開始賽事時，按下 Enter 的字樣"),
+            ("autoshow.png", "汽車展售中心", "車庫首頁進入商城的「汽車展售中心」按鈕"),
+            ("lambo_brand.png", "蘭博基尼商標", "車廠選單中的「LAMBORGHINI」廠牌圖示"),
+            ("revuelto.png", "Revuelto卡片", "車輛選單中的「REVUELTO」車型卡片按鈕")
         ]
         
         self.temp_frames = {}
@@ -308,6 +353,34 @@ class BotGUI:
                 self.draw_status_dot("#10b981") # Green
                 self.status_text.config(text="執行中 (RACING)", fg="#10b981")
                 self.state_desc.config(text="自動賽事計時等待中...", fg="#10b981")
+            elif state == "BUY_START":
+                self.draw_status_dot("#00e5ff") # Cyan
+                self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
+                self.state_desc.config(text="偵測汽車展售中心按鈕... (尋找：autoshow.png)", fg="#00e5ff")
+            elif state == "BUY_IN_SHOP":
+                self.draw_status_dot("#3b82f6") # Blue
+                self.status_text.config(text="執行中 (ACTIVE)", fg="#3b82f6")
+                self.state_desc.config(text="商城已進入，發送 Backspace 開啟廠牌選單...", fg="#3b82f6")
+            elif state == "BUY_SELECT_MANUFACTURER":
+                self.draw_status_dot("#00e5ff") # Cyan
+                self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
+                self.state_desc.config(text="搜尋 LAMBORGHINI 車廠標誌... (尋找：lambo_brand.png)", fg="#00e5ff")
+            elif state == "BUY_SELECT_CAR":
+                self.draw_status_dot("#00e5ff") # Cyan
+                self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
+                self.state_desc.config(text="搜尋 REVUELTO 車輛卡片... (尋找：revuelto.png)", fg="#00e5ff")
+            elif state == "BUY_LIVERY":
+                self.draw_status_dot("#ff007f") # Pink
+                self.status_text.config(text="執行中 (ACTIVE)", fg="#ff007f")
+                self.state_desc.config(text="正在選擇與確認塗裝顏色 (Enter)...", fg="#ff007f")
+            elif state == "BUY_CONFIRM":
+                self.draw_status_dot("#ff007f") # Pink
+                self.status_text.config(text="執行中 (ACTIVE)", fg="#ff007f")
+                self.state_desc.config(text="確認購買中 (Enter)...", fg="#ff007f")
+            elif state == "BUY_WAIT_ANIMATION":
+                self.draw_status_dot("#10b981") # Green
+                self.status_text.config(text="過場中 (ANIMATION)", fg="#10b981")
+                self.state_desc.config(text="購車成功！播放過場動畫與 Esc 返回中...", fg="#10b981")
         self.root.after(0, action)
 
     def save_settings(self):
@@ -341,6 +414,7 @@ class BotGUI:
             window_title = self.combo_windows.get()
             self.bot.game_window_title = window_title
             self.bot.selected_hwnd = self.windows_map.get(window_title)
+            self.bot.mode = self.bot_mode_var.get()
         except ValueError:
             pass
             
@@ -348,15 +422,28 @@ class BotGUI:
             # Check OpenCV again in case it finished installing
             self.check_opencv_status()
             
-            # Check if templates exist
+            # Check if templates exist for the selected mode
             missing = []
-            for filename, _, _ in self.temp_items:
+            mode = self.bot_mode_var.get()
+            required_templates = []
+            if mode == "RACE_FARM":
+                required_templates = ["restart.png", "yes.png", "start.png"]
+            else:
+                required_templates = ["autoshow.png", "lambo_brand.png", "revuelto.png"]
+                
+            for filename in required_templates:
                 path = os.path.join(self.bot.templates_dir, filename)
                 if not os.path.exists(path):
-                    missing.append(filename)
+                    # Find the title for the filename
+                    title = filename
+                    for fn, t, _ in self.temp_items:
+                        if fn == filename:
+                            title = t
+                            break
+                    missing.append(title)
             if missing:
-                self.log_message(f"錯誤: 缺少模板檔案 {missing}，請先完成擷取。")
-                messagebox.showwarning("警告", "請先截圖設定所有匹配模板再啟動腳本！")
+                self.log_message(f"錯誤: 缺少此模式所需的模板檔案 {missing}，請先完成擷取。")
+                messagebox.showwarning("警告", f"請先截圖設定當前模式所需的模板：{missing} 再啟動腳本！")
                 return
                 
             self.bot.start()
@@ -442,6 +529,14 @@ class BotGUI:
             # Reset topmost when switching windows
             self.is_topmost_var.set(False)
             self.log_message(f"已選擇遊戲視窗：{selected_title}")
+
+    def on_mode_changed(self):
+        mode = self.bot_mode_var.get()
+        self.bot.mode = mode
+        if mode == "RACE_FARM":
+            self.log_message("已切換運行模式：【自動刷賽事技能點】")
+        else:
+            self.log_message("已切換運行模式：【自動購買車輛 (Lamborghini Revuelto)】")
 
     def toggle_topmost(self):
         """Toggles the topmost status of the selected window."""

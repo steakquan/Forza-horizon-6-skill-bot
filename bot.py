@@ -28,7 +28,8 @@ class ForzaBot:
         self.game_window_title = "Forza Horizon" # Substring to find window
         self.selected_hwnd = None                # Explicit HWND from GUI
         
-        self.state = "IDLE"  # IDLE, WAIT_FOR_SETTLEMENT, WAIT_FOR_CONFIRM, WAIT_FOR_START_EVENT, RACING
+        self.state = "IDLE"
+        self.mode = "RACE_FARM"  # RACE_FARM, CAR_BUY
         self.is_running = False
         self.thread = None
         self.log_callback = print # Can be replaced by GUI log function
@@ -176,6 +177,110 @@ class ForzaBot:
             time.sleep(1.0)
             
         if not self.is_running:
+            return
+
+        if self.mode == "CAR_BUY":
+            self.log("正在啟動自動購車模式 (Lamborghini Revuelto)...")
+            detected_state = "BUY_START"
+            try:
+                if self.find_template_on_screen("autoshow.png"):
+                    detected_state = "BUY_START"
+                    self.log("自動判定成功：目前處於【車庫首頁 - 汽車展售中心】")
+            except Exception:
+                pass
+            
+            self.update_state(detected_state)
+            
+            while self.is_running:
+                try:
+                    if cv2 is None:
+                        time.sleep(2.0)
+                        continue
+                        
+                    if self.state == "BUY_START":
+                        match = self.find_template_on_screen("autoshow.png")
+                        if match:
+                            x, y, conf = match
+                            self.log(f"偵測到【汽車展售中心】按鈕 (置信度: {conf:.2f})")
+                            self.log("模擬滑鼠點擊進入展售中心...")
+                            direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.15)
+                            self.update_state("BUY_IN_SHOP")
+                            time.sleep(1.0)
+                        else:
+                            # 備用狀態修正
+                            if self.find_template_on_screen("lambo_brand.png"):
+                                self.log("💡 [自動狀態修正]：已在車廠選單中，修正狀態至【選擇車廠】")
+                                self.update_state("BUY_SELECT_MANUFACTURER")
+                            elif self.find_template_on_screen("revuelto.png"):
+                                self.log("💡 [自動狀態修正]：已在車輛選單中，修正狀態至【選擇車輛】")
+                                self.update_state("BUY_SELECT_CAR")
+                            else:
+                                time.sleep(self.check_interval)
+                                
+                    elif self.state == "BUY_IN_SHOP":
+                        self.log("已進入商城，發送鍵盤 'Backspace' 開啟車廠選單...")
+                        direct_input.press_and_release(direct_input.KEY_BACKSPACE, duration=0.5)
+                        self.update_state("BUY_SELECT_MANUFACTURER")
+                        time.sleep(1.5)
+                        
+                    elif self.state == "BUY_SELECT_MANUFACTURER":
+                        match = self.find_template_on_screen("lambo_brand.png")
+                        if match:
+                            x, y, conf = match
+                            self.log(f"偵測到【LAMBORGHINI】車廠標誌 (置信度: {conf:.2f})")
+                            self.log("模擬滑鼠點擊進入車廠選單...")
+                            direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.15)
+                            self.update_state("BUY_SELECT_CAR")
+                            time.sleep(1.5)
+                        else:
+                            if self.find_template_on_screen("revuelto.png"):
+                                self.log("💡 [自動狀態修正]：已在車輛選單中，修正狀態至【選擇車輛】")
+                                self.update_state("BUY_SELECT_CAR")
+                            else:
+                                time.sleep(self.check_interval)
+                                
+                    elif self.state == "BUY_SELECT_CAR":
+                        match = self.find_template_on_screen("revuelto.png")
+                        if match:
+                            x, y, conf = match
+                            self.log(f"偵測到【REVUELTO】車輛卡片 (置信度: {conf:.2f})")
+                            self.log("模擬滑鼠點擊選中車輛...")
+                            direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.15)
+                            self.update_state("BUY_LIVERY")
+                            time.sleep(1.0)
+                        else:
+                            time.sleep(self.check_interval)
+                            
+                    elif self.state == "BUY_LIVERY":
+                        self.log("進入選擇塗裝畫面，發送鍵盤 'Enter'...")
+                        direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.5)
+                        time.sleep(1.0)
+                        self.log("發送鍵盤 'Enter' 確認塗裝顏色...")
+                        direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.5)
+                        self.update_state("BUY_CONFIRM")
+                        time.sleep(1.0)
+                        
+                    elif self.state == "BUY_CONFIRM":
+                        self.log("進入是否確認購買頁面，發送鍵盤 'Enter'...")
+                        direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.5)
+                        time.sleep(1.0)
+                        self.log("發送鍵盤 'Enter' 確認購買...")
+                        direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.5)
+                        self.update_state("BUY_WAIT_ANIMATION")
+                        
+                    elif self.state == "BUY_WAIT_ANIMATION":
+                        self.log("購車成功！等待 10 秒購車動畫與過場...")
+                        time.sleep(10.0)
+                        self.log("動畫結束，發送鍵盤 'Esc' 返回汽車展售中心...")
+                        direct_input.press_and_release(direct_input.KEY_ESC, duration=0.5)
+                        self.update_state("BUY_START")
+                        time.sleep(2.0)
+                        
+                except Exception as e:
+                    self.log(f"自動購車循環中發生異常錯誤: {e}")
+                    time.sleep(2.0)
+                    
+            self.update_state("IDLE")
             return
 
         self.log("正在分析當前遊戲畫面，嘗試自動判定所處階段...")

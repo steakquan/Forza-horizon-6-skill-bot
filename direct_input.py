@@ -28,6 +28,7 @@ KEY_X = 0x2D       # 'X' key
 KEY_ENTER = 0x1C   # 'Enter' key
 KEY_ESC = 0x01     # 'ESC' key
 KEY_W = 0x11       # 'W' key (Forward)
+KEY_BACKSPACE = 0x0E # 'Backspace' key
 
 # C Structs
 class KEYBDINPUT(ctypes.Structure):
