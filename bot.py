@@ -476,6 +476,10 @@ class ForzaBot:
                                 time.sleep(0.5)
                                 self.log(f"模擬滑鼠點擊選中車輛 (置信度: {conf:.2f})...")
                                 direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.05)
+                                # 等待選單位移與動畫完成，發送 Enter 開啟選單
+                                time.sleep(1.0)
+                                self.log("發送鍵盤 'Enter' 鍵以叫出乘駕選單...")
+                                direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.5)
                                 self.update_state("MASTERY_DRIVE_PROMPT")
                                 time.sleep(1.5)
                             else:
