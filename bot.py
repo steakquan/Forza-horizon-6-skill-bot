@@ -292,6 +292,7 @@ class ForzaBot:
 
         if self.mode == "CAR_BUY":
             self.log("正在啟動自動購車模式 (Lamborghini Revuelto)...")
+            self.buy_car_count = 0
             detected_state = "BUY_START"
             try:
                 if self.find_template_on_screen("autoshow.png"):
@@ -393,6 +394,12 @@ class ForzaBot:
                         if match:
                             x, y, conf = match
                             self.log(f"偵測到【駕駛】字樣 (置信度: {conf:.2f})，購車動畫已結束。")
+                            self.buy_car_count += 1
+                            self.log(f"進度：第 {self.buy_car_count} / 12 輛車購買完成。")
+                            if self.buy_car_count >= 12:
+                                self.log("已成功購買 12 輛車，達到設定上限，腳本自動停止。")
+                                self.stop()
+                                break
                             self.log("發送鍵盤 'Esc' 返回汽車展售中心...")
                             direct_input.press_and_release(direct_input.KEY_ESC, duration=0.5)
                             self.update_state("BUY_START")
