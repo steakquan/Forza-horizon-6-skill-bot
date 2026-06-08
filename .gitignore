@@ -6,6 +6,7 @@ __pycache__/
 
 # User templates (should be captured locally due to resolution)
 templates/*.png
+templates/*.json
 
 # IDEs and OS files
 .idea/

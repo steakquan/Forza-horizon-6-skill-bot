@@ -898,14 +898,14 @@ class BotGUI:
         self.hotkey_thread.start()
 
     def _hotkey_loop(self):
-        if not user32.RegisterHotKey(None, HOTKEY_START_ID, 0, VK_F10):
+        if not user32.RegisterHotKey(0, HOTKEY_START_ID, 0, VK_F10):
             self.log_message("警告: 無法註冊全域啟動快捷鍵 F10 (可能被佔用)")
-        if not user32.RegisterHotKey(None, HOTKEY_STOP_ID, 0, VK_F11):
+        if not user32.RegisterHotKey(0, HOTKEY_STOP_ID, 0, VK_F11):
             self.log_message("警告: 無法註冊全域停止快捷鍵 F11 (可能被佔用)")
             
         msg = wintypes.MSG()
         while not self.hotkey_stop_event.is_set():
-            r = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
+            r = user32.GetMessageW(ctypes.byref(msg), 0, 0, 0)
             if r != 0:
                 if msg.message == win32con.WM_HOTKEY:
                     if msg.wParam == HOTKEY_START_ID:
@@ -917,8 +917,8 @@ class BotGUI:
                 user32.TranslateMessage(ctypes.byref(msg))
                 user32.DispatchMessageW(ctypes.byref(msg))
                 
-        user32.UnregisterHotKey(None, HOTKEY_START_ID)
-        user32.UnregisterHotKey(None, HOTKEY_STOP_ID)
+        user32.UnregisterHotKey(0, HOTKEY_START_ID)
+        user32.UnregisterHotKey(0, HOTKEY_STOP_ID)
 
     def refresh_timer(self):
         """Periodic UI updates."""
@@ -948,7 +948,11 @@ class BotGUI:
         if self.bot.is_running:
             self.bot.stop()
         self.hotkey_stop_event.set()
-        user32.PostThreadMessageW(self.hotkey_thread.ident, win32con.WM_QUIT, 0, 0)
+        if self.hotkey_thread and self.hotkey_thread.ident:
+            try:
+                user32.PostThreadMessageW(self.hotkey_thread.ident, win32con.WM_QUIT, 0, 0)
+            except Exception:
+                pass
         self.root.destroy()
 
 
