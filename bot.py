@@ -215,10 +215,17 @@ class ForzaBot:
                         self.log("發送鍵盤 'X' 按鍵進行重新開始...")
                         direct_input.press_and_release(direct_input.KEY_X, duration=0.5)
                         self.update_state("WAIT_FOR_CONFIRM")
-                        # 稍微等待遊戲反應
                         time.sleep(1.0)
                     else:
-                        time.sleep(self.check_interval)
+                        # 備用語音/畫面狀態自適應修正：如果已經跳過此階段
+                        if self.find_template_on_screen("yes.png"):
+                            self.log("💡 [自動狀態修正]：等待結算時偵測到【是】確認按鈕，修正狀態至【確認選單】")
+                            self.update_state("WAIT_FOR_CONFIRM")
+                        elif self.find_template_on_screen("start.png"):
+                            self.log("💡 [自動狀態修正]：等待結算時偵測到【開始賽事】按鈕，修正狀態至【起跑畫面】")
+                            self.update_state("WAIT_FOR_START_EVENT")
+                        else:
+                            time.sleep(self.check_interval)
 
                 elif self.state == "WAIT_FOR_CONFIRM":
                     # 辨識畫面中央是否有「是」按鈕 (yes.png)
@@ -229,11 +236,17 @@ class ForzaBot:
                         self.log("發送鍵盤 'Enter' 按鍵確認重新開始...")
                         direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.5)
                         self.update_state("WAIT_FOR_START_EVENT")
-                        # 等待場景轉跳
                         time.sleep(3.0)
                     else:
-                        # 預防錯過或按鍵沒點到，可重複嘗試，或等待
-                        time.sleep(self.check_interval)
+                        # 備用語音/畫面狀態自適應修正
+                        if self.find_template_on_screen("start.png"):
+                            self.log("💡 [自動狀態修正]：等待確認時偵測到【開始賽事】按鈕，修正狀態至【起跑畫面】")
+                            self.update_state("WAIT_FOR_START_EVENT")
+                        elif self.find_template_on_screen("restart.png"):
+                            self.log("💡 [自動狀態修正]：等待確認時偵測到【重新開始】按鈕，修正狀態至【結算畫面】")
+                            self.update_state("WAIT_FOR_SETTLEMENT")
+                        else:
+                            time.sleep(self.check_interval)
 
                 elif self.state == "WAIT_FOR_START_EVENT":
                     # 辨識畫面是否有「開始賽事」按鈕 (start.png)
@@ -245,28 +258,65 @@ class ForzaBot:
                         direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.5)
                         self.update_state("RACING")
                     else:
-                        time.sleep(self.check_interval)
+                        # 備用語音/畫面狀態自適應修正
+                        if self.find_template_on_screen("restart.png"):
+                            self.log("💡 [自動狀態修正]：等待起跑時偵測到【重新開始】按鈕，修正狀態至【結算畫面】")
+                            self.update_state("WAIT_FOR_SETTLEMENT")
+                        elif self.find_template_on_screen("yes.png"):
+                            self.log("💡 [自動狀態修正]：等待起跑時偵測到【是】確認按鈕，修正狀態至【確認選單】")
+                            self.update_state("WAIT_FOR_CONFIRM")
+                        else:
+                            time.sleep(self.check_interval)
 
                 elif self.state == "RACING":
                     self.log("賽事已開始，自動按下 'W' 鍵加速前進...")
                     direct_input.press_key(direct_input.KEY_W)
                     
+                    early_exit = False
+                    next_state = "WAIT_FOR_SETTLEMENT"
                     try:
-                        self.log(f"開始賽事計時等待，共 {self.race_duration} 秒...")
+                        self.log(f"開始賽事計時等待，共 {self.race_duration} 秒... (期間將持續偵測賽事狀態)")
                         start_time = time.time()
+                        last_detect_time = time.time()
                         while time.time() - start_time < self.race_duration:
                             if not self.is_running:
                                 break
+                            
+                            # 每 1.5 秒檢測一次畫面，確認賽事是否已提前結束或進入其它畫面
+                            current_time = time.time()
+                            if current_time - last_detect_time >= 1.5:
+                                last_detect_time = current_time
+                                # 檢測是否提前進入了結算或確認畫面
+                                if self.find_template_on_screen("restart.png"):
+                                    self.log("🔍 [賽事狀態偵測]：在賽事過程中偵測到【重新開始】按鈕，賽事已提前結束！")
+                                    early_exit = True
+                                    next_state = "WAIT_FOR_SETTLEMENT"
+                                    break
+                                elif self.find_template_on_screen("yes.png"):
+                                    self.log("🔍 [賽事狀態偵測]：在賽事過程中偵測到【是】確認按鈕，賽事已提前結束！")
+                                    early_exit = True
+                                    next_state = "WAIT_FOR_CONFIRM"
+                                    break
+                                elif self.find_template_on_screen("start.png"):
+                                    self.log("🔍 [賽事狀態偵測]：在賽事過程中偵測到【開始賽事】按鈕，賽事可能未開始或已重置！")
+                                    early_exit = True
+                                    next_state = "WAIT_FOR_START_EVENT"
+                                    break
+                            
                             time.sleep(0.1)
                     finally:
-                        self.log("賽事時間已到或腳本停止，釋放 'W' 鍵...")
+                        self.log("釋放 'W' 鍵...")
                         direct_input.release_key(direct_input.KEY_W)
                         
                     if not self.is_running:
                         return
                         
-                    self.log("等待時間已到，預期賽事已結束，進入結算畫面偵測狀態。")
-                    self.update_state("WAIT_FOR_SETTLEMENT")
+                    if early_exit:
+                        self.log(f"賽事提前終止，跳轉至狀態: {next_state}")
+                        self.update_state(next_state)
+                    else:
+                        self.log("預定賽事等待時間已到，進入結算畫面偵測狀態。")
+                        self.update_state("WAIT_FOR_SETTLEMENT")
 
             except Exception as e:
                 self.log(f"執行循環中發生異常錯誤: {e}")
