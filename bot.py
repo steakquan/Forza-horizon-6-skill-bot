@@ -301,33 +301,42 @@ class ForzaBot:
                     early_exit = False
                     next_state = "WAIT_FOR_SETTLEMENT"
                     try:
-                        self.log(f"開始賽事計時等待，共 {self.race_duration} 秒... (期間將持續偵測賽事狀態)")
+                        self.log(f"開始賽事計時等待，共 {self.race_duration} 秒... (前 5 秒為啟動與載入保護期)")
                         start_time = time.time()
                         last_detect_time = time.time()
+                        last_w_press_time = time.time()
+                        
                         while time.time() - start_time < self.race_duration:
                             if not self.is_running:
                                 break
                             
-                            # 每 1.5 秒檢測一次畫面，確認賽事是否已提前結束或進入其它畫面
                             current_time = time.time()
-                            if current_time - last_detect_time >= 1.5:
-                                last_detect_time = current_time
-                                # 檢測是否提前進入了結算或確認畫面
-                                if self.find_template_on_screen("restart.png"):
-                                    self.log("🔍 [賽事狀態偵測]：在賽事過程中偵測到【重新開始】按鈕，賽事已提前結束！")
-                                    early_exit = True
-                                    next_state = "WAIT_FOR_SETTLEMENT"
-                                    break
-                                elif self.find_template_on_screen("yes.png"):
-                                    self.log("🔍 [賽事狀態偵測]：在賽事過程中偵測到【是】確認按鈕，賽事已提前結束！")
-                                    early_exit = True
-                                    next_state = "WAIT_FOR_CONFIRM"
-                                    break
-                                elif self.find_template_on_screen("start.png"):
-                                    self.log("🔍 [賽事狀態偵測]：在賽事過程中偵測到【開始賽事】按鈕，賽事可能未開始或已重置！")
-                                    early_exit = True
-                                    next_state = "WAIT_FOR_START_EVENT"
-                                    break
+                            
+                            # 每 2.0 秒重送一次 W 鍵，確保遊戲在控制權移交或載入完成後能確實接收並維持 W 鍵訊號
+                            if current_time - last_w_press_time >= 2.0:
+                                last_w_press_time = current_time
+                                direct_input.press_key(direct_input.KEY_W)
+                            
+                            # 避開前 5.0 秒的遊戲載入/淡出期，避免誤判尚未完全消失的「開始賽事」按鈕
+                            if current_time - start_time > 5.0:
+                                if current_time - last_detect_time >= 1.5:
+                                    last_detect_time = current_time
+                                    # 檢測是否提前進入了結算或確認畫面
+                                    if self.find_template_on_screen("restart.png"):
+                                        self.log("🔍 [賽事狀態偵測]：在賽事過程中偵測到【重新開始】按鈕，賽事已提前結束！")
+                                        early_exit = True
+                                        next_state = "WAIT_FOR_SETTLEMENT"
+                                        break
+                                    elif self.find_template_on_screen("yes.png"):
+                                        self.log("🔍 [賽事狀態偵測]：在賽事過程中偵測到【是】確認按鈕，賽事已提前結束！")
+                                        early_exit = True
+                                        next_state = "WAIT_FOR_CONFIRM"
+                                        break
+                                    elif self.find_template_on_screen("start.png"):
+                                        self.log("🔍 [賽事狀態偵測]：在賽事過程中偵測到【開始賽事】按鈕，賽事可能未開始或已重置！")
+                                        early_exit = True
+                                        next_state = "WAIT_FOR_START_EVENT"
+                                        break
                             
                             time.sleep(0.1)
                     finally:
