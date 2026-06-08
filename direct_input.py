@@ -97,7 +97,7 @@ def press_and_release(scan_code, duration=0.5):
 # Mouse Actions
 def set_cursor_pos(x, y):
     """Moves the cursor to absolute screen coordinates (x, y)."""
-    ctypes.windll.user32.SetCursorPos(x, y)
+    ctypes.windll.user32.SetCursorPos(int(x), int(y))
 
 def mouse_click(x, y, click_duration=0.1, settle_delay=0.1):
     """Moves the mouse to (x, y) and performs a left-click."""
