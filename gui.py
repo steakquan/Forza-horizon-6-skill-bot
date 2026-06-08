@@ -280,7 +280,7 @@ class BotGUI:
         temp_title = tk.Label(template_card, text="圖像匹配模板校準與設定", font=(FONT_FAMILY, 11, "bold"), fg="#00e5ff", bg="#252533")
         temp_title.pack(anchor="w", padx=15, pady=(12, 5))
         
-        inst_text = tk.Label(template_card, text="如果辨識不準，請在遊戲執行至對應畫面時點擊「擷取」，然後在跳出的截圖中框選目標文字區域。", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533", justify="left")
+        inst_text = tk.Label(template_card, text="如果辨識不準，請在遊戲執行至對應畫面時點擊「擷取」，然後在跳出的截圖中框選目標文字區域。", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533", justify="left", wraplength=500)
         inst_text.pack(anchor="w", padx=15, pady=(0, 10))
         
         # Grid list for template items (Both Race Farm and Car Buy templates)
@@ -338,7 +338,7 @@ class BotGUI:
         grid_calib_title = tk.Label(template_card, text="4x4 技能樹網格校準", font=(FONT_FAMILY, 11, "bold"), fg="#00e5ff", bg="#252533")
         grid_calib_title.pack(anchor="w", padx=15, pady=(0, 5))
         
-        grid_calib_desc = tk.Label(template_card, text="為實現自動點選熟練度技能，請在進入車輛熟練度畫面時，點選下方按鈕分別校準技能樹的最左上角與最右下角按鈕的中心位置。", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533", justify="left", wrap=True)
+        grid_calib_desc = tk.Label(template_card, text="為實現自動點選熟練度技能，請在進入車輛熟練度畫面時，點選下方按鈕分別校準技能樹的最左上角與最右下角按鈕的中心位置。", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533", justify="left", wraplength=500)
         grid_calib_desc.pack(anchor="w", padx=15, pady=(0, 10))
         
         # Grid frame for calibration buttons
