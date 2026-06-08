@@ -34,7 +34,8 @@ class BotGUI:
         self.root.title("Forza Horizon 6 刷技能點小助手")
         self.root.geometry("640x580")
         self.root.configure(bg="#1a1a22")
-        self.root.resizable(False, False)
+        self.root.resizable(True, True)
+        self.root.minsize(640, 580)
         
         # Initialize the bot
         self.bot = ForzaBot()
@@ -159,8 +160,15 @@ class BotGUI:
         log_title = tk.Label(log_frame, text="實時運行日誌", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533")
         log_title.pack(anchor="w", padx=15, pady=(6, 4))
         
-        self.log_text = tk.Text(log_frame, bg="#15151c", fg="#2efb57", insertbackground="#ffffff", relief="flat", font=("Consolas", 9), wrap="word")
-        self.log_text.pack(fill="both", expand=True, padx=15, pady=(0, 10))
+        log_container = tk.Frame(log_frame, bg="#15151c")
+        log_container.pack(fill="both", expand=True, padx=15, pady=(0, 10))
+        
+        self.log_text = tk.Text(log_container, bg="#15151c", fg="#2efb57", insertbackground="#ffffff", relief="flat", font=("Consolas", 9), wrap="word")
+        self.log_text.pack(side="left", fill="both", expand=True)
+        
+        scrollbar = ttk.Scrollbar(log_container, orient="vertical", command=self.log_text.yview)
+        scrollbar.pack(side="right", fill="y")
+        self.log_text.config(yscrollcommand=scrollbar.set)
 
     def build_settings_tab(self):
         settings_card = ttk.Frame(self.tab_settings, style="Card.TFrame")
@@ -472,7 +480,8 @@ class BotGUI:
         help_win.title("背景掛機與焦點設定指引")
         help_win.geometry("540x480")
         help_win.configure(bg="#1a1a22")
-        help_win.resizable(False, False)
+        help_win.resizable(True, True)
+        help_win.minsize(450, 400)
         help_win.transient(self.root)
         help_win.grab_set()
         
