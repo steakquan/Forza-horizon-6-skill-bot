@@ -288,7 +288,8 @@ class BotGUI:
             ("autoshow.png", "汽車展售中心", "車庫首頁進入商城的「汽車展售中心」按鈕"),
             ("lambo_brand.png", "蘭博基尼商標", "車廠選單中的「LAMBORGHINI」廠牌圖示"),
             ("revuelto.png", "Revuelto卡片", "車輛選單中的「REVUELTO」車型卡片按鈕"),
-            ("factory_colors.png", "車廠色彩字樣", "塗裝頁面的「車廠色彩」文字區域（用以確認塗裝畫面已完全載入）")
+            ("factory_colors.png", "車廠色彩字樣", "塗裝頁面的「車廠色彩」文字區域（用以確認塗裝畫面已完全載入）"),
+            ("drive.png", "駕駛字樣", "購車完成過場後的「駕駛」文字區域（確認過場動畫結束，可按下 Esc 退出）")
         ]
         
         self.temp_frames = {}
@@ -382,9 +383,9 @@ class BotGUI:
                 self.status_text.config(text="執行中 (ACTIVE)", fg="#ff007f")
                 self.state_desc.config(text="確認購買中 (Enter)...", fg="#ff007f")
             elif state == "BUY_WAIT_ANIMATION":
-                self.draw_status_dot("#10b981") # Green
-                self.status_text.config(text="過場中 (ANIMATION)", fg="#10b981")
-                self.state_desc.config(text="購車成功！播放過場動畫與 Esc 返回中...", fg="#10b981")
+                self.draw_status_dot("#00e5ff") # Cyan
+                self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
+                self.state_desc.config(text="等待購車動畫結束... (尋找：駕駛)", fg="#00e5ff")
         self.root.after(0, action)
 
     def save_settings(self):
@@ -433,7 +434,7 @@ class BotGUI:
             if mode == "RACE_FARM":
                 required_templates = ["restart.png", "yes.png", "start.png"]
             else:
-                required_templates = ["autoshow.png", "lambo_brand.png", "revuelto.png", "factory_colors.png"]
+                required_templates = ["autoshow.png", "lambo_brand.png", "revuelto.png", "factory_colors.png", "drive.png"]
                 
             for filename in required_templates:
                 path = os.path.join(self.bot.templates_dir, filename)

@@ -275,12 +275,16 @@ class ForzaBot:
                         self.update_state("BUY_WAIT_ANIMATION")
                         
                     elif self.state == "BUY_WAIT_ANIMATION":
-                        self.log("購車成功！等待 10 秒購車動畫與過場...")
-                        time.sleep(10.0)
-                        self.log("動畫結束，發送鍵盤 'Esc' 返回汽車展售中心...")
-                        direct_input.press_and_release(direct_input.KEY_ESC, duration=0.5)
-                        self.update_state("BUY_START")
-                        time.sleep(2.0)
+                        match = self.find_template_on_screen("drive.png")
+                        if match:
+                            x, y, conf = match
+                            self.log(f"偵測到【駕駛】字樣 (置信度: {conf:.2f})，購車動畫已結束。")
+                            self.log("發送鍵盤 'Esc' 返回汽車展售中心...")
+                            direct_input.press_and_release(direct_input.KEY_ESC, duration=0.5)
+                            self.update_state("BUY_START")
+                            time.sleep(2.0)
+                        else:
+                            time.sleep(self.check_interval)
                         
                 except Exception as e:
                     self.log(f"自動購車循環中發生異常錯誤: {e}")
