@@ -181,24 +181,50 @@ class ForzaBot:
         self.log("正在分析當前遊戲畫面，嘗試自動判定所處階段...")
         
         detected_state = "WAIT_FOR_SETTLEMENT"
+        immediate_action = None
         try:
             # We check yes.png first as a confirmation prompt is distinct in the center
-            if self.find_template_on_screen("yes.png"):
+            yes_match = self.find_template_on_screen("yes.png")
+            if yes_match:
                 detected_state = "WAIT_FOR_CONFIRM"
                 self.log("自動判定成功：目前處於【確認重新開始彈窗】")
-            elif self.find_template_on_screen("restart.png"):
-                detected_state = "WAIT_FOR_SETTLEMENT"
-                self.log("自動判定成功：目前處於【結算畫面】")
-            elif self.find_template_on_screen("start.png"):
-                detected_state = "WAIT_FOR_START_EVENT"
-                self.log("自動判定成功：目前處於【賽事準備起跑畫面】")
+                immediate_action = "YES"
             else:
-                self.log("未偵測到已知特徵，預設進入【等待結算畫面】偵測狀態。")
+                restart_match = self.find_template_on_screen("restart.png")
+                if restart_match:
+                    detected_state = "WAIT_FOR_SETTLEMENT"
+                    self.log("自動判定成功：目前處於【結算畫面】")
+                    immediate_action = "RESTART"
+                else:
+                    start_match = self.find_template_on_screen("start.png")
+                    if start_match:
+                        detected_state = "WAIT_FOR_START_EVENT"
+                        self.log("自動判定成功：目前處於【賽事準備起跑畫面】")
+                        immediate_action = "START"
+                    else:
+                        self.log("未偵測到已知特徵，預設進入【等待結算畫面】偵測狀態。")
         except Exception as e:
             self.log(f"自動判定階段發生異常: {e}，預設進入【等待結算畫面】")
             
         self.update_state(detected_state)
         
+        # Execute immediate action if detected to make startup instant
+        if self.is_running and immediate_action:
+            if immediate_action == "YES":
+                self.log("啟動瞬時響應：發送鍵盤 'Enter' 按鍵確認重新開始...")
+                direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.5)
+                self.update_state("WAIT_FOR_START_EVENT")
+                time.sleep(3.0)
+            elif immediate_action == "RESTART":
+                self.log("啟動瞬時響應：發送鍵盤 'X' 按鍵進行重新開始...")
+                direct_input.press_and_release(direct_input.KEY_X, duration=0.5)
+                self.update_state("WAIT_FOR_CONFIRM")
+                time.sleep(1.0)
+            elif immediate_action == "START":
+                self.log("啟動瞬時響應：發送鍵盤 'Enter' 按鍵開始賽事...")
+                direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.5)
+                self.update_state("RACING")
+                
         while self.is_running:
             try:
                 # 確保 OpenCV 已經載入
