@@ -355,8 +355,11 @@ class ForzaBot:
                         if match:
                             x, y, conf = match
                             self.log(f"偵測到【REVUELTO】車輛卡片 (置信度: {conf:.2f})")
+                            self.log("滑鼠先移至車輛位置，等待 0.5 秒以觸發懸停狀態...")
+                            direct_input.set_cursor_pos(x, y)
+                            time.sleep(0.5)
                             self.log("模擬滑鼠點擊選中車輛...")
-                            direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.15)
+                            direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.05)
                             self.update_state("BUY_LIVERY")
                             time.sleep(1.0)
                         else:
@@ -461,8 +464,11 @@ class ForzaBot:
                             self.log(f"畫面中偵測到 {len(matches)} 輛 REVUELTO 車輛卡片")
                             if self.mastery_car_index < len(matches):
                                 x, y, conf = matches[self.mastery_car_index]
-                                self.log(f"點選第 {self.mastery_car_index + 1} 輛未使用過之車輛 (座標: {x}, {y}, 置信度: {conf:.2f})")
-                                direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.15)
+                                self.log(f"滑鼠先移至第 {self.mastery_car_index + 1} 輛未使用過之車輛位置 (座標: {x}, {y})，等待 0.5 秒以觸發懸停狀態...")
+                                direct_input.set_cursor_pos(x, y)
+                                time.sleep(0.5)
+                                self.log(f"模擬滑鼠點擊選中車輛 (置信度: {conf:.2f})...")
+                                direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.05)
                                 self.update_state("MASTERY_DRIVE_PROMPT")
                                 time.sleep(1.5)
                             else:
