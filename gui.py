@@ -195,9 +195,15 @@ class BotGUI:
         self.entry_duration.insert(0, str(int(self.bot.race_duration)))
         self.entry_duration.grid(row=1, column=1, sticky="w", padx=(10, 0), pady=8)
         
+        deactivate_frame = tk.Frame(grid_frame, bg="#252533")
+        deactivate_frame.grid(row=1, column=2, sticky="w", padx=(15, 0), pady=8)
+        
         self.prevent_deactivate_var = tk.BooleanVar(value=False)
-        self.chk_prevent_deactivate = tk.Checkbutton(grid_frame, text="背景維持聚焦 (防止停用)", variable=self.prevent_deactivate_var, fg="#a0a0b0", bg="#252533", selectcolor="#15151c", activebackground="#252533", activeforeground="#a0a0b0", font=(FONT_FAMILY, 9), command=self.toggle_prevent_deactivate)
-        self.chk_prevent_deactivate.grid(row=1, column=2, sticky="w", padx=(15, 0), pady=8)
+        self.chk_prevent_deactivate = tk.Checkbutton(deactivate_frame, text="背景維持聚焦 (防止停用)", variable=self.prevent_deactivate_var, fg="#a0a0b0", bg="#252533", selectcolor="#15151c", activebackground="#252533", activeforeground="#a0a0b0", font=(FONT_FAMILY, 9), command=self.toggle_prevent_deactivate)
+        self.chk_prevent_deactivate.pack(side="left")
+        
+        self.btn_help_deactivate = tk.Button(deactivate_frame, text="❓", font=(FONT_FAMILY, 8), bg="#3b82f6", fg="#ffffff", activebackground="#2563eb", activeforeground="#ffffff", relief="flat", padx=4, pady=1, command=self.show_deactivate_help)
+        self.btn_help_deactivate.pack(side="left", padx=(5, 0))
         
         # Row 2: Threshold
         tk.Label(grid_frame, text="辨識相似門檻:", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533", anchor="w").grid(row=2, column=0, sticky="w", pady=8)
@@ -468,14 +474,76 @@ class BotGUI:
     def toggle_prevent_deactivate(self):
         """Logs the toggle of prevent deactivation state."""
         enable = self.prevent_deactivate_var.get()
-        selected_title = self.combo_windows.get()
         if enable:
-            if selected_title:
-                self.log_message(f"已啟用視窗「{selected_title}」的背景維持聚焦（防止停用）功能。")
-            else:
-                self.log_message("已啟用背景維持聚焦功能（請先選擇視窗）。")
+            self.log_message("已勾選背景維持聚焦設定。請參閱彈出的設定指引說明。")
+            self.show_deactivate_help()
         else:
-            self.log_message("已停用背景維持聚焦功能。")
+            self.log_message("已關閉背景維持聚焦設定。")
+
+    def show_deactivate_help(self):
+        """Shows the guide window explaining background deactivation and how to use DisplayFusion / VM."""
+        help_win = tk.Toplevel(self.root)
+        help_win.title("背景掛機與焦點設定指引")
+        help_win.geometry("540x480")
+        help_win.configure(bg="#1a1a22")
+        help_win.resizable(False, False)
+        help_win.transient(self.root)
+        help_win.grab_set()
+        
+        # Center the window relative to root
+        root_x = self.root.winfo_x()
+        root_y = self.root.winfo_y()
+        help_win.geometry(f"+{root_x + 50}+{root_y + 50}")
+        
+        title_label = tk.Label(help_win, text="背景掛機重要指引與技術限制", font=(FONT_FAMILY, 12, "bold"), fg="#00e5ff", bg="#1a1a22")
+        title_label.pack(anchor="w", padx=20, pady=(15, 10))
+        
+        text_frame = tk.Frame(help_win, bg="#252533", bd=1, relief="solid", highlightthickness=0)
+        text_frame.pack(fill="both", expand=True, padx=20, pady=(0, 15))
+        
+        # Use a Text widget to render formatted information with scrollbar
+        text_widget = tk.Text(text_frame, bg="#252533", fg="#ffffff", font=(FONT_FAMILY, 9), wrap="word", relief="flat", padx=10, pady=10)
+        text_widget.pack(side="left", fill="both", expand=True)
+        
+        scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=text_widget.yview)
+        scrollbar.pack(side="right", fill="y")
+        text_widget.config(yscrollcommand=scrollbar.set)
+        
+        guide_text = (
+            "【💡 為什麼背景維持聚焦功能無法自動運作？】\n"
+            "現代 Windows 3D 遊戲（如《極限競速：地平線》系列）使用 DirectX 12 與原始輸入（Raw Input）系統。當玩家點擊其他視窗或進行 Alt-Tab 切換時，遊戲會在底層主動偵測焦點喪失，並強制將遊戲暫停或降低幀率以防浪費硬體資源。\n\n"
+            "程式碼級別的「欺騙」（如傳送 WM_ACTIVATE 訊息）無法越過 DirectX 底層偵測。要實現強行防凍結，必須將自訂程式碼（DLL）注入遊戲程序。然而，由於地平線系列受反作弊系統嚴密監控，DLL 注入將會面臨極高的帳號封禁（Ban）風險！為了使用者的帳號安全，本腳本堅決不包含任何危險的注入行為。\n\n"
+            "─────────────────────────────────\n\n"
+            "【⚠️ 鍵盤模擬洩漏限制】\n"
+            "本腳本使用 SendInput API 進行硬體級鍵盤模擬（這是繞過遊戲反按鍵阻擋的唯一手段）。SendInput 發出的所有按鍵只會送到「當前系統焦點視窗」（即您滑鼠選中或正在打字的視窗）。\n"
+            "因此，即使我們成功使遊戲在背景運行不凍結，只要您在其他視窗（如 Chrome 瀏覽器）打字，腳本發送的「W」、「X」、「Enter」鍵就會直接輸入到您的 Chrome 中，導致您無法使用鍵盤，且遊戲也會因收不到按鍵而中斷！\n\n"
+            "─────────────────────────────────\n\n"
+            "【🛠️ 社群驗證的最佳掛機方案】\n\n"
+            "方案 1：搭配 DisplayFusion（雙螢幕玩家推薦）\n"
+            "對於擁有第二螢幕的玩家，您可以使用 DisplayFusion 軟體來達成背景不凍結：\n"
+            "  1. 將遊戲改為「無邊框視窗化 (Borderless Windowed)」。\n"
+            "  2. 下載並安裝 DisplayFusion（免費版即可）。\n"
+            "  3. 開啟 DisplayFusion 設定 -> 點選「Functions」分頁 -> 搜尋「Prevent Window Deactivation (防止視窗停用)」。\n"
+            "  4. 為此功能指定一組自訂快捷鍵（例如 Ctrl + Alt + P）。\n"
+            "  5. 點入遊戲視窗使其成為活動視窗，接著按下該快捷鍵。\n"
+            "  6. 此時您可將滑鼠移到第二螢幕進行滑鼠操作或觀看影片，遊戲不會再因失去焦點而凍結。\n"
+            "  *(注意：因 SendInput 限制，掛機期間仍不可使用鍵盤打字，否則按鍵會輸入到您打字的視窗中)*\n\n"
+            "方案 2：使用 Windows 虛擬機 (VM)\n"
+            "若想在掛機時完全不受干擾地使用鍵盤和滑鼠：\n"
+            "  1. 在本機安裝 Windows 虛擬機（如 VMware Workstation 或 Hyper-V）。\n"
+            "  2. 確保虛擬機分配了足夠的顯示卡效能（GPU 直通）以流暢執行遊戲。\n"
+            "  3. 在虛擬機內執行遊戲與本腳本。\n"
+            "  4. 如此一來，您可以隨時將虛擬機視窗縮小或置於背景，主機的日常鍵盤打字將完全不受影響！\n\n"
+            "方案 3：利用內建定時器離線掛機（最推薦）\n"
+            "  - 在設定中選擇「1 小時」或「1.5 小時」後啟動。\n"
+            "  - 讓遊戲保持在最上層，人離開電腦，時間到後腳本將自動安全停止並倒數，最適合短時間離開或睡前掛機。\n"
+        )
+        
+        text_widget.insert("1.0", guide_text)
+        text_widget.config(state="disabled") # Make it read-only
+        
+        btn_close = tk.Button(help_win, text="我知道了", font=(FONT_FAMILY, 9, "bold"), bg="#3b82f6", fg="#ffffff", activebackground="#2563eb", activeforeground="#ffffff", relief="flat", padx=20, pady=5, command=help_win.destroy)
+        btn_close.pack(pady=(0, 15))
 
     # Template Capture System
     def capture_template(self, filename):
@@ -596,19 +664,6 @@ class BotGUI:
                 self.auto_stop_target_time = None
                 self.lbl_countdown.config(text="")
 
-        # Prevent window deactivation if enabled (DisplayFusion-like behavior)
-        if hasattr(self, 'prevent_deactivate_var') and self.prevent_deactivate_var.get():
-            selected_title = self.combo_windows.get()
-            if selected_title:
-                hwnd = self.windows_map.get(selected_title)
-                if hwnd and win32gui.IsWindow(hwnd):
-                    try:
-                        win32gui.PostMessage(hwnd, 0x0086, 1, 0)
-                        win32gui.PostMessage(hwnd, 0x0006, 1, 0)
-                        win32gui.PostMessage(hwnd, 0x001C, 1, 0)
-                    except Exception:
-                        pass
-                        
         # Schedule next tick every 500ms
         self.root.after(500, self.refresh_timer)
 
