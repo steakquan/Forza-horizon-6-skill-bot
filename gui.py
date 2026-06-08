@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -27,6 +28,51 @@ VK_F10 = 0x79  # F10 key
 VK_F11 = 0x7A  # F11 key
 
 FONT_FAMILY = "Microsoft JhengHei"
+
+LOG_TOKEN_PATTERN = re.compile(
+    r"("
+    r"\[[^\]]+\]|"
+    r"【[^】]+】|"
+    r"[🔍💡]|"
+    r"\b[a-zA-Z0-9_\-]+\.png\b|"
+    r"\b[A-Z_]{4,30}\b|"
+    r"'[^']+'|"
+    r"\b\d+(?:\.\d+)?\b|"
+    r"偵測到|比對成功|置信度|成功|"
+    r"錯誤|失敗|異常|error|fail|"
+    r"警告|warning|"
+    r"模擬滑鼠點擊|滑鼠點選|發送鍵盤|自動按下|按鍵|點擊|按下|釋放|鍵盤|滑鼠|點選|更換"
+    r")"
+)
+
+def get_tag_for_token(token):
+    if token in ("💡", "🔍"):
+        return "badge"
+    if token.startswith('[') and token.endswith(']'):
+        content = token[1:-1]
+        if '/' in content and all(c.isdigit() or c == '/' for c in content):
+            return "number"
+        return "badge"
+    if token.startswith('【') and token.endswith('】'):
+        return "bracket"
+    if token.endswith('.png'):
+        return "template"
+    if token.startswith("'") and token.endswith("'"):
+        return "key"
+    if token[0].isdigit():
+        return "number"
+    if token.isupper() and len(token) >= 4:
+        return "state"
+    if token in ("偵測到", "比對成功", "置信度", "成功"):
+        return "detect"
+    if token in ("錯誤", "失敗", "異常", "error", "fail"):
+        return "error"
+    if token in ("警告", "warning"):
+        return "warn"
+    if token in ("模擬滑鼠點擊", "滑鼠點選", "發送鍵盤", "自動按下", "按鍵", "點擊", "按下", "釋放", "鍵盤", "滑鼠", "點選", "更換"):
+        return "action"
+    return "info"
+
 
 class BotGUI:
     def __init__(self, root):
@@ -192,13 +238,18 @@ class BotGUI:
         self.log_text.config(yscrollcommand=scrollbar.set)
         
         # Setup Verilog-like log coloring tags
-        self.log_text.tag_config("time", foreground="#808090")        # Gray for timestamp
-        self.log_text.tag_config("state", foreground="#00e5ff")       # Cyan for state changes
+        self.log_text.tag_config("time", foreground="#5f7181")        # Cool steel gray for timestamp
+        self.log_text.tag_config("state", foreground="#00e5ff", font=("Consolas", 9, "bold"))  # Bright Cyan for state changes
         self.log_text.tag_config("detect", foreground="#10b981")      # Emerald Green for template detection
         self.log_text.tag_config("action", foreground="#fbbf24")      # Amber Yellow for keyboard/mouse emulation
-        self.log_text.tag_config("warn", foreground="#f97316")        # Orange for warnings/tips
-        self.log_text.tag_config("error", foreground="#ef4444")       # Bright Red for errors
-        self.log_text.tag_config("info", foreground="#e2e8f0")        # Light Slate Gray for general info
+        self.log_text.tag_config("warn", foreground="#f97316", font=("Consolas", 9, "bold"))   # Orange for warnings
+        self.log_text.tag_config("error", foreground="#ef4444", font=("Consolas", 9, "bold"))  # Bright Red for errors
+        self.log_text.tag_config("info", foreground="#94a3b8")        # Slate Gray for general text
+        self.log_text.tag_config("number", foreground="#ec4899")      # Bright Pink/Magenta for numbers
+        self.log_text.tag_config("key", foreground="#a855f7", font=("Consolas", 9, "bold"))     # Purple for keys
+        self.log_text.tag_config("template", foreground="#34d399")   # Mint Green for filenames
+        self.log_text.tag_config("badge", foreground="#3b82f6", font=("Consolas", 9, "bold"))  # Blue bold for brackets/badges
+        self.log_text.tag_config("bracket", foreground="#22d3ee", font=("Consolas", 9, "bold")) # Cyan/teal bold for UI names
 
     def build_settings_tab(self):
         settings_card = ttk.Frame(self.tab_settings, style="Card.TFrame")
@@ -402,25 +453,26 @@ class BotGUI:
     def log_message(self, message):
         """Thread-safe logging to the text widget with Verilog-like multi-coloring."""
         def action():
-            tag = "info"
-            msg_lower = message.lower()
-            
-            if "錯誤" in msg_lower or "失敗" in msg_lower or "異常" in msg_lower or "error" in msg_lower or "fail" in msg_lower:
-                tag = "error"
-            elif "警告" in msg_lower or "warning" in msg_lower or "💡" in msg_lower or "🔍" in msg_lower:
-                tag = "warn"
-            elif "狀態" in msg_lower or "模式" in msg_lower or "自動判定" in msg_lower or "啟動" in msg_lower:
-                tag = "state"
-            elif "偵測到" in msg_lower or "比對成功" in msg_lower or "置信度" in msg_lower or "成功" in msg_lower:
-                tag = "detect"
-            elif "發送" in msg_lower or "按下" in msg_lower or "釋放" in msg_lower or "模擬" in msg_lower or "點擊" in msg_lower or "鍵盤" in msg_lower or "滑鼠" in msg_lower or "點選" in msg_lower:
-                tag = "action"
-                
-            # Insert timestamp in gray, then message with tag
+            # Insert timestamp in gray
             self.log_text.insert(tk.END, f"{time.strftime('%H:%M:%S')} - ", "time")
-            self.log_text.insert(tk.END, f"{message}\n", tag)
+            
+            # Parse message into segments and insert with appropriate tags
+            parts = LOG_TOKEN_PATTERN.split(message)
+            for i, part in enumerate(parts):
+                if not part:
+                    continue
+                if i % 2 == 1:
+                    # Matched token
+                    tag = get_tag_for_token(part)
+                    self.log_text.insert(tk.END, part, tag)
+                else:
+                    # Unmatched text
+                    self.log_text.insert(tk.END, part, "info")
+                    
+            self.log_text.insert(tk.END, "\n")
             self.log_text.see(tk.END)
         self.root.after(0, action)
+
 
     def on_state_change(self, state):
         """Callback for bot state transitions."""
