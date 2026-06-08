@@ -195,15 +195,8 @@ class BotGUI:
         self.entry_duration.insert(0, str(int(self.bot.race_duration)))
         self.entry_duration.grid(row=1, column=1, sticky="w", padx=(10, 0), pady=8)
         
-        deactivate_frame = tk.Frame(grid_frame, bg="#252533")
-        deactivate_frame.grid(row=1, column=2, sticky="w", padx=(15, 0), pady=8)
-        
-        self.prevent_deactivate_var = tk.BooleanVar(value=False)
-        self.chk_prevent_deactivate = tk.Checkbutton(deactivate_frame, text="背景維持聚焦 (防止停用)", variable=self.prevent_deactivate_var, fg="#a0a0b0", bg="#252533", selectcolor="#15151c", activebackground="#252533", activeforeground="#a0a0b0", font=(FONT_FAMILY, 9), command=self.toggle_prevent_deactivate)
-        self.chk_prevent_deactivate.pack(side="left")
-        
-        self.btn_help_deactivate = tk.Button(deactivate_frame, text="❓", font=(FONT_FAMILY, 8), bg="#3b82f6", fg="#ffffff", activebackground="#2563eb", activeforeground="#ffffff", relief="flat", padx=4, pady=1, command=self.show_deactivate_help)
-        self.btn_help_deactivate.pack(side="left", padx=(5, 0))
+        self.btn_bg_guide = tk.Button(grid_frame, text="❓ 背景掛機指引 (推薦 DisplayFusion)", font=(FONT_FAMILY, 9), bg="#4b5563", fg="#ffffff", activebackground="#374151", activeforeground="#ffffff", relief="flat", padx=8, pady=2, command=self.show_deactivate_help)
+        self.btn_bg_guide.grid(row=1, column=2, sticky="w", padx=(15, 0), pady=8)
         
         # Row 2: Threshold
         tk.Label(grid_frame, text="辨識相似門檻:", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533", anchor="w").grid(row=2, column=0, sticky="w", pady=8)
@@ -471,14 +464,7 @@ class BotGUI:
             messagebox.showerror("錯誤", f"無法設定置頂狀態: {e}")
             self.is_topmost_var.set(False)
 
-    def toggle_prevent_deactivate(self):
-        """Logs the toggle of prevent deactivation state."""
-        enable = self.prevent_deactivate_var.get()
-        if enable:
-            self.log_message("已勾選背景維持聚焦設定。請參閱彈出的設定指引說明。")
-            self.show_deactivate_help()
-        else:
-            self.log_message("已關閉背景維持聚焦設定。")
+
 
     def show_deactivate_help(self):
         """Shows the guide window explaining background deactivation and how to use DisplayFusion / VM."""
