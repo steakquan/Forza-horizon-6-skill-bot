@@ -184,12 +184,21 @@ class BotGUI:
         log_container = tk.Frame(log_frame, bg="#15151c")
         log_container.pack(fill="both", expand=True, padx=15, pady=(0, 10))
         
-        self.log_text = tk.Text(log_container, bg="#15151c", fg="#2efb57", insertbackground="#ffffff", relief="flat", font=("Consolas", 9), wrap="word")
+        self.log_text = tk.Text(log_container, bg="#15151c", fg="#e2e8f0", insertbackground="#ffffff", relief="flat", font=("Consolas", 9), wrap="word")
         self.log_text.pack(side="left", fill="both", expand=True)
         
         scrollbar = ttk.Scrollbar(log_container, orient="vertical", command=self.log_text.yview)
         scrollbar.pack(side="right", fill="y")
         self.log_text.config(yscrollcommand=scrollbar.set)
+        
+        # Setup Verilog-like log coloring tags
+        self.log_text.tag_config("time", foreground="#808090")        # Gray for timestamp
+        self.log_text.tag_config("state", foreground="#00e5ff")       # Cyan for state changes
+        self.log_text.tag_config("detect", foreground="#10b981")      # Emerald Green for template detection
+        self.log_text.tag_config("action", foreground="#fbbf24")      # Amber Yellow for keyboard/mouse emulation
+        self.log_text.tag_config("warn", foreground="#f97316")        # Orange for warnings/tips
+        self.log_text.tag_config("error", foreground="#ef4444")       # Bright Red for errors
+        self.log_text.tag_config("info", foreground="#e2e8f0")        # Light Slate Gray for general info
 
     def build_settings_tab(self):
         settings_card = ttk.Frame(self.tab_settings, style="Card.TFrame")
@@ -391,9 +400,25 @@ class BotGUI:
         self.status_dot.create_oval(2, 2, 10, 10, fill=color, outline="")
 
     def log_message(self, message):
-        """Thread-safe logging to the text widget."""
+        """Thread-safe logging to the text widget with Verilog-like multi-coloring."""
         def action():
-            self.log_text.insert(tk.END, f"{time.strftime('%H:%M:%S')} - {message}\n")
+            tag = "info"
+            msg_lower = message.lower()
+            
+            if "錯誤" in msg_lower or "失敗" in msg_lower or "異常" in msg_lower or "error" in msg_lower or "fail" in msg_lower:
+                tag = "error"
+            elif "警告" in msg_lower or "warning" in msg_lower or "💡" in msg_lower or "🔍" in msg_lower:
+                tag = "warn"
+            elif "狀態" in msg_lower or "模式" in msg_lower or "自動判定" in msg_lower or "啟動" in msg_lower:
+                tag = "state"
+            elif "偵測到" in msg_lower or "比對成功" in msg_lower or "置信度" in msg_lower or "成功" in msg_lower:
+                tag = "detect"
+            elif "發送" in msg_lower or "按下" in msg_lower or "釋放" in msg_lower or "模擬" in msg_lower or "點擊" in msg_lower or "鍵盤" in msg_lower or "滑鼠" in msg_lower or "點選" in msg_lower:
+                tag = "action"
+                
+            # Insert timestamp in gray, then message with tag
+            self.log_text.insert(tk.END, f"{time.strftime('%H:%M:%S')} - ", "time")
+            self.log_text.insert(tk.END, f"{message}\n", tag)
             self.log_text.see(tk.END)
         self.root.after(0, action)
 
