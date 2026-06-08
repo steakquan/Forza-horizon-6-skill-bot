@@ -155,11 +155,14 @@ class BotGUI:
         
         self.bot_mode_var = tk.StringVar(value="RACE_FARM")
         
-        self.rad_race = tk.Radiobutton(radio_frame, text="自動刷賽事技能點", variable=self.bot_mode_var, value="RACE_FARM", fg="#ffffff", bg="#252533", selectcolor="#15151c", activebackground="#252533", activeforeground="#ffffff", font=(FONT_FAMILY, 9), command=self.on_mode_changed)
-        self.rad_race.pack(side="left", padx=(0, 20))
+        self.rad_race = tk.Radiobutton(radio_frame, text="自動刷賽事", variable=self.bot_mode_var, value="RACE_FARM", fg="#ffffff", bg="#252533", selectcolor="#15151c", activebackground="#252533", activeforeground="#ffffff", font=(FONT_FAMILY, 9), command=self.on_mode_changed)
+        self.rad_race.pack(side="left", padx=(0, 15))
         
-        self.rad_buy = tk.Radiobutton(radio_frame, text="自動購買車輛 (Lamborghini Revuelto)", variable=self.bot_mode_var, value="CAR_BUY", fg="#ffffff", bg="#252533", selectcolor="#15151c", activebackground="#252533", activeforeground="#ffffff", font=(FONT_FAMILY, 9), command=self.on_mode_changed)
-        self.rad_buy.pack(side="left")
+        self.rad_buy = tk.Radiobutton(radio_frame, text="自動購車 (Revuelto)", variable=self.bot_mode_var, value="CAR_BUY", fg="#ffffff", bg="#252533", selectcolor="#15151c", activebackground="#252533", activeforeground="#ffffff", font=(FONT_FAMILY, 9), command=self.on_mode_changed)
+        self.rad_buy.pack(side="left", padx=(0, 15))
+        
+        self.rad_mastery = tk.Radiobutton(radio_frame, text="自動點熟練度", variable=self.bot_mode_var, value="CAR_MASTERY", fg="#ffffff", bg="#252533", selectcolor="#15151c", activebackground="#252533", activeforeground="#ffffff", font=(FONT_FAMILY, 9), command=self.on_mode_changed)
+        self.rad_mastery.pack(side="left")
         
         # 2. Control Buttons
         btn_frame = tk.Frame(self.tab_dash, bg="#1a1a22")
@@ -289,7 +292,11 @@ class BotGUI:
             ("lambo_brand.png", "蘭博基尼商標", "車廠選單中的「LAMBORGHINI」廠牌圖示"),
             ("revuelto.png", "Revuelto卡片", "車輛選單中的「REVUELTO」車型卡片按鈕"),
             ("factory_colors.png", "車廠色彩字樣", "塗裝頁面的「車廠色彩」文字區域（用以確認塗裝畫面已完全載入）"),
-            ("drive.png", "駕駛字樣", "購車完成過場後的「駕駛」文字區域（確認過場動畫結束，可按下 Esc 退出）")
+            ("drive.png", "駕駛字樣", "購車完成過場後的「駕駛」文字區域（確認過場動畫結束，可按下 Esc 退出）"),
+            ("my_cars_tile.png", "「我的車輛」入口", "車庫首頁進入我的車輛的按鈕區域（辨識後按 Enter 進入）"),
+            ("drive_car.png", "「乘駕車輛」字樣", "選擇車輛後跳出的「乘駕車輛」按鈕（辨識後按 Enter）"),
+            ("upgrades_tuning.png", "「升級套件與調校」", "車庫主選單的「升級套件與調校」按鈕（辨識後滑鼠點擊）"),
+            ("car_mastery_button.png", "「車輛熟練度」入口", "升級選單中的「車輛熟練度」按鈕（辨識後滑鼠點擊）")
         ]
         
         self.temp_frames = {}
@@ -323,6 +330,50 @@ class BotGUI:
                 "canvas": thumb_canvas,
                 "label": lbl_title
             }
+            
+        # Divider line
+        div = tk.Frame(template_card, height=1, bg="#3e3e4f")
+        div.pack(fill="x", padx=15, pady=15)
+        
+        grid_calib_title = tk.Label(template_card, text="4x4 技能樹網格校準", font=(FONT_FAMILY, 11, "bold"), fg="#00e5ff", bg="#252533")
+        grid_calib_title.pack(anchor="w", padx=15, pady=(0, 5))
+        
+        grid_calib_desc = tk.Label(template_card, text="為實現自動點選熟練度技能，請在進入車輛熟練度畫面時，點選下方按鈕分別校準技能樹的最左上角與最右下角按鈕的中心位置。", font=(FONT_FAMILY, 9), fg="#a0a0b0", bg="#252533", justify="left", wrap=True)
+        grid_calib_desc.pack(anchor="w", padx=15, pady=(0, 10))
+        
+        # Grid frame for calibration buttons
+        grid_calib_frame = tk.Frame(template_card, bg="#252533")
+        grid_calib_frame.pack(fill="x", padx=15, pady=5)
+        
+        # Top-left Calib
+        tl_frame = tk.Frame(grid_calib_frame, bg="#1e1e28", bd=1, relief="solid", highlightthickness=0)
+        tl_frame.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=5)
+        
+        lbl_tl_title = tk.Label(tl_frame, text="1. 技能樹左上角按鈕中心", font=(FONT_FAMILY, 9, "bold"), fg="#ffffff", bg="#1e1e28")
+        lbl_tl_title.pack(anchor="w", padx=8, pady=(4, 2))
+        
+        tl_val = f"已設定: {self.bot.mastery_grid_topleft}" if self.bot.mastery_grid_topleft else "未設定"
+        tl_color = "#2efb57" if self.bot.mastery_grid_topleft else "#ef4444"
+        self.lbl_mastery_topleft = tk.Label(tl_frame, text=tl_val, font=(FONT_FAMILY, 9), fg=tl_color, bg="#1e1e28")
+        self.lbl_mastery_topleft.pack(anchor="w", padx=8, pady=(0, 4))
+        
+        btn_tl_calib = tk.Button(tl_frame, text=" 校準左上角 ", font=(FONT_FAMILY, 8), bg="#00e5ff", fg="#1a1a22", activebackground="#00b8cc", activeforeground="#1a1a22", relief="flat", padx=8, pady=1, command=lambda: self.calibrate_grid_point("左上角"))
+        btn_tl_calib.pack(anchor="w", padx=8, pady=(0, 8))
+        
+        # Bottom-right Calib
+        br_frame = tk.Frame(grid_calib_frame, bg="#1e1e28", bd=1, relief="solid", highlightthickness=0)
+        br_frame.pack(side="right", fill="both", expand=True, padx=(10, 0), pady=5)
+        
+        lbl_br_title = tk.Label(br_frame, text="2. 技能樹右下角按鈕中心", font=(FONT_FAMILY, 9, "bold"), fg="#ffffff", bg="#1e1e28")
+        lbl_br_title.pack(anchor="w", padx=8, pady=(4, 2))
+        
+        br_val = f"已設定: {self.bot.mastery_grid_bottomright}" if self.bot.mastery_grid_bottomright else "未設定"
+        br_color = "#2efb57" if self.bot.mastery_grid_bottomright else "#ef4444"
+        self.lbl_mastery_bottomright = tk.Label(br_frame, text=br_val, font=(FONT_FAMILY, 9), fg=br_color, bg="#1e1e28")
+        self.lbl_mastery_bottomright.pack(anchor="w", padx=8, pady=(0, 4))
+        
+        btn_br_calib = tk.Button(br_frame, text=" 校準右下角 ", font=(FONT_FAMILY, 8), bg="#00e5ff", fg="#1a1a22", activebackground="#00b8cc", activeforeground="#1a1a22", relief="flat", padx=8, pady=1, command=lambda: self.calibrate_grid_point("右下角"))
+        btn_br_calib.pack(anchor="w", padx=8, pady=(0, 8))
 
     def draw_status_dot(self, color):
         self.status_dot.delete("all")
@@ -386,6 +437,38 @@ class BotGUI:
                 self.draw_status_dot("#00e5ff") # Cyan
                 self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
                 self.state_desc.config(text="等待購車動畫結束... (尋找：駕駛)", fg="#00e5ff")
+            elif state == "MASTERY_START":
+                self.draw_status_dot("#00e5ff") # Cyan
+                self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
+                self.state_desc.config(text="搜尋「我的車輛」按鈕... (尋找：my_cars_tile.png)", fg="#00e5ff")
+            elif state == "MASTERY_OPEN_MANUFACTURER":
+                self.draw_status_dot("#3b82f6") # Blue
+                self.status_text.config(text="執行中 (ACTIVE)", fg="#3b82f6")
+                self.state_desc.config(text="已進入車庫，發送 Backspace 以開啟車廠篩選...", fg="#3b82f6")
+            elif state == "MASTERY_SELECT_MANUFACTURER":
+                self.draw_status_dot("#00e5ff") # Cyan
+                self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
+                self.state_desc.config(text="搜尋 LAMBORGHINI 車廠標誌... (尋找：lambo_brand.png)", fg="#00e5ff")
+            elif state == "MASTERY_SELECT_CAR":
+                self.draw_status_dot("#00e5ff") # Cyan
+                self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
+                self.state_desc.config(text=f"選取第 {self.bot.mastery_car_index + 1} 輛 REVUELTO 車輛中... (尋找：revuelto.png)", fg="#00e5ff")
+            elif state == "MASTERY_DRIVE_PROMPT":
+                self.draw_status_dot("#00e5ff") # Cyan
+                self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
+                self.state_desc.config(text="確認乘駕車輛提示... (尋找：drive_car.png)", fg="#00e5ff")
+            elif state == "MASTERY_ENTER_UPGRADES":
+                self.draw_status_dot("#00e5ff") # Cyan
+                self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
+                self.state_desc.config(text="搜尋「升級套件與調校」入口... (尋找：upgrades_tuning.png)", fg="#00e5ff")
+            elif state == "MASTERY_ENTER_MASTERY":
+                self.draw_status_dot("#00e5ff") # Cyan
+                self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
+                self.state_desc.config(text="搜尋「車輛熟練度」按鈕... (尋找：car_mastery_button.png)", fg="#00e5ff")
+            elif state == "MASTERY_UNLOCK_SKILLS":
+                self.draw_status_dot("#10b981") # Green
+                self.status_text.config(text="執行中 (ACTIVE)", fg="#10b981")
+                self.state_desc.config(text="正在解鎖技能點 (4x4 網格)...", fg="#10b981")
         self.root.after(0, action)
 
     def save_settings(self):
@@ -406,6 +489,7 @@ class BotGUI:
             self.bot.game_window_title = window_title
             self.bot.selected_hwnd = self.windows_map.get(window_title)
             
+            self.bot.save_config()
             self.log_message(f"設定已儲存：賽事時間 {duration} 秒，相似門檻 {threshold}，視窗標題「{window_title}」")
             messagebox.showinfo("成功", "設定參數已儲存！")
         except ValueError as e:
@@ -433,8 +517,14 @@ class BotGUI:
             required_templates = []
             if mode == "RACE_FARM":
                 required_templates = ["restart.png", "yes.png", "start.png"]
-            else:
+            elif mode == "CAR_BUY":
                 required_templates = ["autoshow.png", "lambo_brand.png", "revuelto.png", "factory_colors.png", "drive.png"]
+            elif mode == "CAR_MASTERY":
+                required_templates = ["my_cars_tile.png", "lambo_brand.png", "revuelto.png", "drive_car.png", "upgrades_tuning.png", "car_mastery_button.png"]
+                if not self.bot.mastery_grid_topleft or not self.bot.mastery_grid_bottomright:
+                    self.log_message("錯誤: 尚未校準技能樹網格座標！請在「圖像校準」中設定。")
+                    messagebox.showwarning("警告", "請先完成技能樹「左上角」與「右下角」座標校準再啟動腳本！")
+                    return
                 
             for filename in required_templates:
                 path = os.path.join(self.bot.templates_dir, filename)
@@ -540,8 +630,10 @@ class BotGUI:
         self.bot.mode = mode
         if mode == "RACE_FARM":
             self.log_message("已切換運行模式：【自動刷賽事技能點】")
-        else:
+        elif mode == "CAR_BUY":
             self.log_message("已切換運行模式：【自動購買車輛 (Lamborghini Revuelto)】")
+        elif mode == "CAR_MASTERY":
+            self.log_message("已切換運行模式：【自動點選車輛熟練度】")
 
     def toggle_topmost(self):
         """Toggles the topmost status of the selected window."""
@@ -728,6 +820,51 @@ class BotGUI:
         save_path = os.path.join(self.bot.templates_dir, filename)
         CropOverlay(self.root, screenshot, save_path, on_crop_finished)
 
+    def calibrate_grid_point(self, point_name):
+        """Handles single coordinate selection for grid points."""
+        if self.bot.is_running:
+            messagebox.showwarning("提示", "請先停止腳本後再進行校準。")
+            return
+            
+        self.log_message(f"開始校準技能樹{point_name}座標... 視窗即將隱藏...")
+        self.root.withdraw()
+        self.root.update()
+        
+        time.sleep(0.6)
+        
+        hwnd, rect = self.bot.find_game_window()
+        
+        if hwnd and rect:
+            left, top, right, bottom = rect
+            if left < 0: left = 0
+            if top < 0: top = 0
+            if right > left and bottom > top:
+                screenshot = ImageGrab.grab(bbox=(left, top, right, bottom))
+            else:
+                screenshot = ImageGrab.grab()
+        else:
+            screenshot = ImageGrab.grab()
+            self.log_message("找不到遊戲視窗，擷取全螢幕畫面。")
+            
+        def on_select_finished(success, result):
+            self.root.deiconify()
+            self.root.update()
+            
+            if success:
+                x, y = result
+                if point_name == "左上角":
+                    self.bot.mastery_grid_topleft = (x, y)
+                    self.lbl_mastery_topleft.config(text=f"已設定: ({x}, {y})", fg="#2efb57")
+                else:
+                    self.bot.mastery_grid_bottomright = (x, y)
+                    self.lbl_mastery_bottomright.config(text=f"已設定: ({x}, {y})", fg="#2efb57")
+                self.bot.save_config()
+                self.log_message(f"技能樹{point_name}座標校準成功！相對座標: ({x}, {y})")
+            else:
+                self.log_message(f"技能樹校準取消或失敗: {result}")
+                
+        CoordinateOverlay(self.root, screenshot, on_select_finished)
+
     def update_all_thumbnails(self):
         for filename, _, _ in self.temp_items:
             self.update_thumbnail(filename)
@@ -885,6 +1022,42 @@ class CropOverlay:
     def close(self, success, msg):
         self.top.destroy()
         self.callback(success, msg)
+
+
+class CoordinateOverlay:
+    """Fullscreen borderless canvas that lets the user select a single coordinate."""
+    def __init__(self, parent, screenshot, callback):
+        self.screenshot = screenshot
+        self.callback = callback
+        
+        self.top = tk.Toplevel(parent)
+        self.top.attributes("-fullscreen", True)
+        self.top.attributes("-topmost", True)
+        
+        self.width = screenshot.width
+        self.height = screenshot.height
+        
+        self.canvas = tk.Canvas(self.top, width=self.width, height=self.height, cursor="crosshair")
+        self.canvas.pack(fill="both", expand=True)
+        
+        self.tk_img = ImageTk.PhotoImage(screenshot)
+        self.canvas.create_image(0, 0, anchor="nw", image=self.tk_img)
+        
+        self.inst_lbl = self.canvas.create_text(self.width // 2, 30, text="請在畫面上點擊目標點的中心位置。按 ESC 取消。", fill="#ef4444", font=(FONT_FAMILY, 12, "bold"))
+        self.canvas.create_rectangle(self.width // 2 - 250, 10, self.width // 2 + 250, 50, fill="#15151c", outline="#00e5ff", width=1)
+        self.canvas.tag_raise(self.inst_lbl)
+        
+        self.canvas.bind("<ButtonRelease-1>", self.on_click)
+        self.top.bind("<Escape>", lambda e: self.close(False, "User cancelled"))
+
+    def on_click(self, event):
+        x = event.x
+        y = event.y
+        self.close(True, (x, y))
+
+    def close(self, success, result):
+        self.top.destroy()
+        self.callback(success, result)
 
 if __name__ == "__main__":
     root = tk.Tk()

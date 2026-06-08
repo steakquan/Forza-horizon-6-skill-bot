@@ -29,15 +29,56 @@ class ForzaBot:
         self.selected_hwnd = None                # Explicit HWND from GUI
         
         self.state = "IDLE"
-        self.mode = "RACE_FARM"  # RACE_FARM, CAR_BUY
+        self.mode = "RACE_FARM"  # RACE_FARM, CAR_BUY, CAR_MASTERY
         self.is_running = False
         self.thread = None
         self.log_callback = print # Can be replaced by GUI log function
         self.state_callback = None # Can be replaced by GUI state update function
         
+        self.mastery_grid_topleft = None
+        self.mastery_grid_bottomright = None
+        self.mastery_car_index = 0
+        
         # Ensure templates directory exists
         if not os.path.exists(self.templates_dir):
             os.makedirs(self.templates_dir)
+            
+        self.load_config()
+
+    def load_config(self):
+        import json
+        config_path = os.path.join(self.templates_dir, "config.json")
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    self.race_duration = data.get("race_duration", self.race_duration)
+                    self.threshold = data.get("threshold", self.threshold)
+                    self.game_window_title = data.get("game_window_title", self.game_window_title)
+                    self.mastery_grid_topleft = data.get("mastery_grid_topleft", self.mastery_grid_topleft)
+                    if self.mastery_grid_topleft:
+                        self.mastery_grid_topleft = tuple(self.mastery_grid_topleft)
+                    self.mastery_grid_bottomright = data.get("mastery_grid_bottomright", self.mastery_grid_bottomright)
+                    if self.mastery_grid_bottomright:
+                        self.mastery_grid_bottomright = tuple(self.mastery_grid_bottomright)
+            except Exception as e:
+                self.log(f"讀取設定檔 config.json 發生錯誤: {e}")
+
+    def save_config(self):
+        import json
+        config_path = os.path.join(self.templates_dir, "config.json")
+        try:
+            data = {
+                "race_duration": self.race_duration,
+                "threshold": self.threshold,
+                "game_window_title": self.game_window_title,
+                "mastery_grid_topleft": self.mastery_grid_topleft,
+                "mastery_grid_bottomright": self.mastery_grid_bottomright
+            }
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+        except Exception as e:
+            self.log(f"儲存設定檔 config.json 發生錯誤: {e}")
 
     def log(self, message):
         logging.info(message)
@@ -142,6 +183,74 @@ class ForzaBot:
             return abs_x, abs_y, max_val
             
         return None
+
+    def find_all_templates_on_screen(self, template_filename, min_distance=30):
+        """Searches for all occurrences of a template image on the game screen.
+        Returns a list of (abs_x, abs_y, confidence) sorted from left to right.
+        """
+        if cv2 is None:
+            self.log("錯誤: OpenCV (cv2) 尚未載入，請確認安裝完成。")
+            return []
+            
+        template_path = os.path.join(self.templates_dir, template_filename)
+        if not os.path.exists(template_path):
+            self.log(f"警告: 找不到模板檔案 {template_path}，請先截圖設定。")
+            return []
+            
+        screenshot, offset = self.capture_game_screen()
+        img_rgb = np.array(screenshot)
+        img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
+        img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+        
+        template = cv2.imread(template_path, cv2.IMREAD_GRAYSCALE)
+        if template is None:
+            self.log(f"錯誤: 無法讀取模板檔案 {template_path}")
+            return []
+            
+        w, h = template.shape[1], template.shape[0]
+        
+        # Ensure template is smaller than screen
+        if w > img_gray.shape[1] or h > img_gray.shape[0]:
+            self.log(f"錯誤: 模板尺寸 {w}x{h} 大於畫面尺寸 {img_gray.shape[1]}x{img_gray.shape[0]}")
+            return []
+            
+        res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
+        
+        # Find all locations with confidence >= threshold
+        loc = np.where(res >= self.threshold)
+        
+        matches = []
+        for pt in zip(*loc[::-1]):  # Switch x and y
+            confidence = res[pt[1], pt[0]]
+            matches.append((pt[0] + w // 2, pt[1] + h // 2, confidence))
+            
+        # Group close matches to avoid multiple detections of the same card (basic NMS)
+        matches.sort(key=lambda item: item[0])
+        
+        filtered_matches = []
+        for pt in matches:
+            is_duplicate = False
+            for f_pt in filtered_matches:
+                dist = np.sqrt((pt[0] - f_pt[0])**2 + (pt[1] - f_pt[1])**2)
+                if dist < min_distance:
+                    if pt[2] > f_pt[2]:
+                        filtered_matches.remove(f_pt)
+                        filtered_matches.append(pt)
+                    is_duplicate = True
+                    break
+            if not is_duplicate:
+                filtered_matches.append(pt)
+                
+        # Convert to absolute screen coordinates
+        final_matches = []
+        for rel_x, rel_y, conf in filtered_matches:
+            abs_x = offset[0] + rel_x
+            abs_y = offset[1] + rel_y
+            final_matches.append((abs_x, abs_y, conf))
+            
+        # Sort by x coordinate left-to-right
+        final_matches.sort(key=lambda item: item[0])
+        return final_matches
 
     def start(self):
         """Starts the bot loop in a background thread."""
@@ -288,6 +397,181 @@ class ForzaBot:
                         
                 except Exception as e:
                     self.log(f"自動購車循環中發生異常錯誤: {e}")
+                    time.sleep(2.0)
+                    
+            self.update_state("IDLE")
+            return
+
+        if self.mode == "CAR_MASTERY":
+            self.log("正在啟動自動解鎖車輛熟練度模式...")
+            self.mastery_car_index = 0
+            self.update_state("MASTERY_START")
+            
+            while self.is_running:
+                try:
+                    if cv2 is None:
+                        time.sleep(2.0)
+                        continue
+                        
+                    if self.state == "MASTERY_START":
+                        match = self.find_template_on_screen("my_cars_tile.png")
+                        if match:
+                            x, y, conf = match
+                            self.log(f"偵測到【我的車輛】按鈕 (置信度: {conf:.2f})")
+                            self.log("模擬滑鼠點擊「我的車輛」...")
+                            direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.15)
+                            self.update_state("MASTERY_OPEN_MANUFACTURER")
+                            time.sleep(2.5)
+                        else:
+                            if self.find_template_on_screen("lambo_brand.png"):
+                                self.log("💡 [自動狀態修正]：已在車廠選單中，修正狀態至【選擇車廠】")
+                                self.update_state("MASTERY_SELECT_MANUFACTURER")
+                            elif self.find_template_on_screen("revuelto.png"):
+                                self.log("💡 [自動狀態修正]：已在車輛選單中，修正狀態至【選擇車輛】")
+                                self.update_state("MASTERY_SELECT_CAR")
+                            else:
+                                time.sleep(self.check_interval)
+                                
+                    elif self.state == "MASTERY_OPEN_MANUFACTURER":
+                        self.log("已進入車庫，發送鍵盤 'Backspace' 開啟車廠選單...")
+                        direct_input.press_and_release(direct_input.KEY_BACKSPACE, duration=0.5)
+                        self.update_state("MASTERY_SELECT_MANUFACTURER")
+                        time.sleep(1.5)
+                        
+                    elif self.state == "MASTERY_SELECT_MANUFACTURER":
+                        match = self.find_template_on_screen("lambo_brand.png")
+                        if match:
+                            x, y, conf = match
+                            self.log(f"偵測到【LAMBORGHINI】車廠標誌 (置信度: {conf:.2f})")
+                            self.log("模擬滑鼠點擊進入車廠選單...")
+                            direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.15)
+                            self.update_state("MASTERY_SELECT_CAR")
+                            time.sleep(2.0)
+                        else:
+                            if self.find_template_on_screen("revuelto.png"):
+                                self.log("💡 [自動狀態修正]：已在車輛選單中，修正狀態至【選擇車輛】")
+                                self.update_state("MASTERY_SELECT_CAR")
+                            else:
+                                time.sleep(self.check_interval)
+                                
+                    elif self.state == "MASTERY_SELECT_CAR":
+                        matches = self.find_all_templates_on_screen("revuelto.png")
+                        if matches:
+                            self.log(f"畫面中偵測到 {len(matches)} 輛 REVUELTO 車輛卡片")
+                            if self.mastery_car_index < len(matches):
+                                x, y, conf = matches[self.mastery_car_index]
+                                self.log(f"點選第 {self.mastery_car_index + 1} 輛未使用過之車輛 (座標: {x}, {y}, 置信度: {conf:.2f})")
+                                direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.15)
+                                self.update_state("MASTERY_DRIVE_PROMPT")
+                                time.sleep(1.5)
+                            else:
+                                self.log(f"所有畫面上偵測到的 {len(matches)} 輛車均已點過熟練度，腳本停止。")
+                                self.stop()
+                                break
+                        else:
+                            time.sleep(self.check_interval)
+                            
+                    elif self.state == "MASTERY_DRIVE_PROMPT":
+                        match = self.find_template_on_screen("drive_car.png")
+                        if match:
+                            x, y, conf = match
+                            self.log(f"偵測到【乘駕車輛】按鈕 (置信度: {conf:.2f})，按下 Enter 選擇...")
+                            direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.5)
+                            self.update_state("MASTERY_ENTER_UPGRADES")
+                            self.log("正在進入車庫並更換乘駕車輛，等待 6 秒過場...")
+                            time.sleep(6.0)
+                        else:
+                            if self.find_template_on_screen("upgrades_tuning.png"):
+                                self.log("💡 [自動狀態修正]：已越過乘駕車輛，直接進入升級選單")
+                                self.update_state("MASTERY_ENTER_UPGRADES")
+                            else:
+                                time.sleep(self.check_interval)
+                                
+                    elif self.state == "MASTERY_ENTER_UPGRADES":
+                        match = self.find_template_on_screen("upgrades_tuning.png")
+                        if match:
+                            x, y, conf = match
+                            self.log(f"偵測到【升級套件與調校】入口 (置信度: {conf:.2f})")
+                            self.log("模擬滑鼠點擊「升級套件與調校」...")
+                            direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.15)
+                            self.update_state("MASTERY_ENTER_MASTERY")
+                            time.sleep(2.0)
+                        else:
+                            if self.find_template_on_screen("car_mastery_button.png"):
+                                self.log("💡 [自動狀態修正]：已越過升級套件，直接進入熟練度選單")
+                                self.update_state("MASTERY_ENTER_MASTERY")
+                            else:
+                                time.sleep(self.check_interval)
+                                
+                    elif self.state == "MASTERY_ENTER_MASTERY":
+                        match = self.find_template_on_screen("car_mastery_button.png")
+                        if match:
+                            x, y, conf = match
+                            self.log(f"偵測到【車輛熟練度】入口 (置信度: {conf:.2f})")
+                            self.log("模擬滑鼠點擊「車輛熟練度」...")
+                            direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.15)
+                            self.update_state("MASTERY_UNLOCK_SKILLS")
+                            time.sleep(2.5)
+                        else:
+                            time.sleep(self.check_interval)
+                            
+                    elif self.state == "MASTERY_UNLOCK_SKILLS":
+                        if not self.mastery_grid_topleft or not self.mastery_grid_bottomright:
+                            self.log("錯誤：缺少技能樹校準座標，無法點選技能！")
+                            self.stop()
+                            break
+                            
+                        # User path: (3, 0) -> (2, 0) -> (1, 0) -> (0, 0) -> (0, 1) -> (0, 2)
+                        path = [(3, 0), (2, 0), (1, 0), (0, 0), (0, 1), (0, 2)]
+                        
+                        hwnd, rect = self.find_game_window()
+                        if not rect:
+                            self.log("錯誤：找不到遊戲視窗，無法定位技能點。")
+                            self.stop()
+                            break
+                            
+                        offset_x, offset_y = rect[0], rect[1]
+                        x_tl, y_tl = self.mastery_grid_topleft
+                        x_br, y_br = self.mastery_grid_bottomright
+                        
+                        step_x = (x_br - x_tl) / 3.0
+                        step_y = (y_br - y_tl) / 3.0
+                        
+                        self.log("開始依序解鎖車輛熟練度技能點...")
+                        for step_idx, (row, col) in enumerate(path):
+                            if not self.is_running:
+                                break
+                            
+                            rel_x = x_tl + col * step_x
+                            rel_y = y_tl + row * step_y
+                            abs_x = int(offset_x + rel_x)
+                            abs_y = int(offset_y + rel_y)
+                            
+                            self.log(f"點選技能點 [{step_idx + 1}/6]：格點 (row={row}, col={col}) -> 螢幕座標 ({abs_x}, {abs_y})")
+                            direct_input.mouse_click(abs_x, abs_y, click_duration=0.15, settle_delay=0.1)
+                            time.sleep(0.5)
+                            
+                            direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.4)
+                            time.sleep(0.8)
+                            
+                        if not self.is_running:
+                            break
+                            
+                        self.log("技能點擊完成！發送 'Esc' 返回升級調校畫面...")
+                        direct_input.press_and_release(direct_input.KEY_ESC, duration=0.5)
+                        time.sleep(1.5)
+                        
+                        self.log("發送 'Esc' 返回車庫大廳頁面...")
+                        direct_input.press_and_release(direct_input.KEY_ESC, duration=0.5)
+                        time.sleep(2.0)
+                        
+                        self.mastery_car_index += 1
+                        self.log(f"該車解鎖完成。切換至下一輛，目前索引：{self.mastery_car_index}")
+                        self.update_state("MASTERY_START")
+                        time.sleep(1.0)
+                        
+                except Exception as e:
+                    self.log(f"自動點選熟練度循環中發生異常錯誤: {e}")
                     time.sleep(2.0)
                     
             self.update_state("IDLE")
