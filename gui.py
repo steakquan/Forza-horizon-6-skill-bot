@@ -287,7 +287,8 @@ class BotGUI:
             ("start.png", "開始賽事字樣", "即將開始賽事時，按下 Enter 的字樣"),
             ("autoshow.png", "汽車展售中心", "車庫首頁進入商城的「汽車展售中心」按鈕"),
             ("lambo_brand.png", "蘭博基尼商標", "車廠選單中的「LAMBORGHINI」廠牌圖示"),
-            ("revuelto.png", "Revuelto卡片", "車輛選單中的「REVUELTO」車型卡片按鈕")
+            ("revuelto.png", "Revuelto卡片", "車輛選單中的「REVUELTO」車型卡片按鈕"),
+            ("factory_colors.png", "車廠色彩字樣", "塗裝頁面的「車廠色彩」文字區域（用以確認塗裝畫面已完全載入）")
         ]
         
         self.temp_frames = {}
@@ -373,9 +374,9 @@ class BotGUI:
                 self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
                 self.state_desc.config(text="搜尋 REVUELTO 車輛卡片... (尋找：revuelto.png)", fg="#00e5ff")
             elif state == "BUY_LIVERY":
-                self.draw_status_dot("#ff007f") # Pink
-                self.status_text.config(text="執行中 (ACTIVE)", fg="#ff007f")
-                self.state_desc.config(text="正在選擇與確認塗裝顏色 (Enter)...", fg="#ff007f")
+                self.draw_status_dot("#00e5ff") # Cyan
+                self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
+                self.state_desc.config(text="等待塗裝頁面載入... (尋找：車廠色彩)", fg="#00e5ff")
             elif state == "BUY_CONFIRM":
                 self.draw_status_dot("#ff007f") # Pink
                 self.status_text.config(text="執行中 (ACTIVE)", fg="#ff007f")
@@ -432,7 +433,7 @@ class BotGUI:
             if mode == "RACE_FARM":
                 required_templates = ["restart.png", "yes.png", "start.png"]
             else:
-                required_templates = ["autoshow.png", "lambo_brand.png", "revuelto.png"]
+                required_templates = ["autoshow.png", "lambo_brand.png", "revuelto.png", "factory_colors.png"]
                 
             for filename in required_templates:
                 path = os.path.join(self.bot.templates_dir, filename)

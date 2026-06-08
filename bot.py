@@ -252,13 +252,19 @@ class ForzaBot:
                             time.sleep(self.check_interval)
                             
                     elif self.state == "BUY_LIVERY":
-                        self.log("進入選擇塗裝畫面，發送鍵盤 'Enter'...")
-                        direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.5)
-                        time.sleep(1.0)
-                        self.log("發送鍵盤 'Enter' 確認塗裝顏色...")
-                        direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.5)
-                        self.update_state("BUY_CONFIRM")
-                        time.sleep(1.0)
+                        match = self.find_template_on_screen("factory_colors.png")
+                        if match:
+                            x, y, conf = match
+                            self.log(f"偵測到【車廠色彩】字樣 (置信度: {conf:.2f})，確定塗裝頁面已載入。")
+                            self.log("發送鍵盤 'Enter' 選擇塗裝...")
+                            direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.5)
+                            time.sleep(1.0)
+                            self.log("發送鍵盤 'Enter' 確認塗裝顏色...")
+                            direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.5)
+                            self.update_state("BUY_CONFIRM")
+                            time.sleep(1.0)
+                        else:
+                            time.sleep(self.check_interval)
                         
                     elif self.state == "BUY_CONFIRM":
                         self.log("進入是否確認購買頁面，發送鍵盤 'Enter'...")
