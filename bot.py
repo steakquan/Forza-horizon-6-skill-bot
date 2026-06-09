@@ -776,12 +776,9 @@ class ForzaBot:
                     self.log("賽事已開始，自動按下 'W' 鍵加速前進...")
                     direct_input.press_key(direct_input.KEY_W)
                     
-                    early_exit = False
-                    next_state = "WAIT_FOR_SETTLEMENT"
                     try:
-                        self.log(f"開始賽事計時等待，共 {self.race_duration} 秒... (前 5 秒為啟動與載入保護期)")
+                        self.log(f"開始賽事計時等待，共 {self.race_duration:.1f} 秒...")
                         start_time = time.time()
-                        last_detect_time = time.time()
                         last_w_press_time = time.time()
                         
                         while time.time() - start_time < self.race_duration:
@@ -795,27 +792,6 @@ class ForzaBot:
                                 last_w_press_time = current_time
                                 direct_input.press_key(direct_input.KEY_W)
                             
-                            # 避開前 5.0 秒的遊戲載入/淡出期，避免誤判尚未完全消失的「開始賽事」按鈕
-                            if current_time - start_time > 5.0:
-                                if current_time - last_detect_time >= 1.5:
-                                    last_detect_time = current_time
-                                    # 檢測是否提前進入了結算或確認畫面
-                                    if self.find_template_on_screen("restart.png"):
-                                        self.log("🔍 [賽事狀態偵測]：在賽事過程中偵測到【重新開始】按鈕，賽事已提前結束！")
-                                        early_exit = True
-                                        next_state = "WAIT_FOR_SETTLEMENT"
-                                        break
-                                    elif self.find_template_on_screen("yes.png"):
-                                        self.log("🔍 [賽事狀態偵測]：在賽事過程中偵測到【是】確認按鈕，賽事已提前結束！")
-                                        early_exit = True
-                                        next_state = "WAIT_FOR_CONFIRM"
-                                        break
-                                    elif self.find_template_on_screen("start.png"):
-                                        self.log("🔍 [賽事狀態偵測]：在賽事過程中偵測到【開始賽事】按鈕，賽事可能未開始或已重置！")
-                                        early_exit = True
-                                        next_state = "WAIT_FOR_START_EVENT"
-                                        break
-                            
                             time.sleep(0.1)
                     finally:
                         self.log("釋放 'W' 鍵...")
@@ -824,12 +800,8 @@ class ForzaBot:
                     if not self.is_running:
                         return
                         
-                    if early_exit:
-                        self.log(f"賽事提前終止，跳轉至狀態: {next_state}")
-                        self.update_state(next_state)
-                    else:
-                        self.log("預定賽事等待時間已到，進入結算畫面偵測狀態。")
-                        self.update_state("WAIT_FOR_SETTLEMENT")
+                    self.log("預定賽事等待時間已到，進入結算畫面偵測狀態。")
+                    self.update_state("WAIT_FOR_SETTLEMENT")
 
             except Exception as e:
                 self.log(f"執行循環中發生異常錯誤: {e}")
