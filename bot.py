@@ -390,13 +390,13 @@ class ForzaBot:
                             direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.05)
                             time.sleep(0.5)
                             
-                            # Move mouse cursor to the top center of the game window
+                            # Move mouse cursor to the very top edge of the game window
                             hwnd, rect = self.find_game_window()
                             if rect:
                                 width = rect[2] - rect[0]
                                 abs_x = int(rect[0] + width / 2)
-                                abs_y = int(rect[1] + 50)
-                                self.log(f"將滑鼠移至畫面正上方避開焦點 (座標: {abs_x}, {abs_y})...")
+                                abs_y = int(rect[1] + 10)
+                                self.log(f"將滑鼠移至視窗最上方邊緣避開焦點 (座標: {abs_x}, {abs_y})...")
                                 direct_input.set_cursor_pos(abs_x, abs_y)
                                 time.sleep(0.5)
                             
