@@ -16,6 +16,18 @@ try:
 except ImportError:
     cv2 = None
 
+# Try to import winsdk and asyncio for Windows Native OCR support
+try:
+    import asyncio
+    import io
+    from winsdk.windows.media.ocr import OcrEngine
+    from winsdk.windows.globalization import Language
+    from winsdk.windows.graphics.imaging import BitmapDecoder
+    from winsdk.windows.storage.streams import InMemoryRandomAccessStream, DataWriter
+    HAS_WINSDK = True
+except ImportError:
+    HAS_WINSDK = False
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
@@ -276,6 +288,73 @@ class ForzaBot:
         # Sort by x coordinate left-to-right
         final_matches.sort(key=lambda item: item[0])
         return final_matches
+
+    def find_text_by_ocr_sync(self, target_text):
+        """Synchronously runs OCR to find the given text on the game screen.
+        Returns (abs_x, abs_y, confidence) of the matched text center, or None.
+        """
+        if not HAS_WINSDK:
+            return None
+        try:
+            # Run the async OCR method synchronously using asyncio.run
+            return asyncio.run(self._ocr_search_async(target_text))
+        except Exception as e:
+            self.log(f"OCR 辨識過程發生異常錯誤: {e}")
+            return None
+
+    async def _ocr_search_async(self, target_text):
+        """Asynchronously grabs screen and runs Windows Media OCR to find target_text."""
+        screenshot, offset = self.capture_game_screen()
+        
+        # Convert PIL Image to bytes
+        img_byte_arr = io.BytesIO()
+        screenshot.save(img_byte_arr, format='PNG')
+        img_bytes = img_byte_arr.getvalue()
+        
+        # Write bytes into a Windows Random Access Stream
+        stream = InMemoryRandomAccessStream()
+        writer = DataWriter(stream.get_output_stream_at(0))
+        writer.write_bytes(list(img_bytes))
+        await writer.store_async()
+        await writer.flush_async()
+        
+        # Decode the stream into a SoftwareBitmap
+        decoder = await BitmapDecoder.create_async(stream)
+        software_bitmap = await decoder.get_software_bitmap_async()
+        
+        # Try to initialize Traditional Chinese OCR engine
+        lang = Language("zh-TW")
+        engine = OcrEngine.try_create_from_language(lang)
+        if not engine:
+            engine = OcrEngine.try_create_from_current_language()
+            
+        if not engine:
+            self.log("無法建立 Windows OCR 引擎，可能此 Windows 系統未啟用 OCR 支援功能。")
+            return None
+            
+        # Perform OCR
+        result = await engine.recognize_async(software_bitmap)
+        
+        # Scan for target text (case-insensitive substring match)
+        for line in result.lines:
+            if target_text.lower() in line.text.lower():
+                words = list(line.words)
+                if words:
+                    # Calculate center coordinates of matched text bounding box
+                    first_word_rect = words[0].bounding_rect
+                    last_word_rect = words[-1].bounding_rect
+                    
+                    left = first_word_rect.x
+                    top = first_word_rect.y
+                    right = last_word_rect.x + last_word_rect.width
+                    bottom = last_word_rect.y + last_word_rect.height
+                    
+                    # Compute absolute screen coordinates
+                    center_x = int(offset[0] + left + (right - left) / 2)
+                    center_y = int(offset[1] + top + (bottom - top) / 2)
+                    return center_x, center_y, 1.0  # Return coordinates with dummy confidence 1.0
+                    
+        return None
 
     def start(self):
         """Starts the bot loop in a background thread."""
@@ -564,11 +643,41 @@ class ForzaBot:
                             time.sleep(self.check_interval)
                             
                     elif self.state == "MASTERY_DRIVE_PROMPT":
-                        match = self.find_template_on_screen("drive_car.png")
+                        # Attempt to find "選擇動作" via Windows Native OCR first
+                        match = None
+                        if HAS_WINSDK:
+                            match = self.find_text_by_ocr_sync("選擇動作")
+                            if match:
+                                self.log("💡 [OCR 偵測] 成功辨識「選擇動作」字樣")
+                                
+                        if not match:
+                            # Fallback to OpenCV template matching
+                            match = self.find_template_on_screen("select_action.png")
+                            if match:
+                                self.log("💡 [模板比對] 成功偵測到【選擇動作】標題")
+                                
                         if match:
                             x, y, conf = match
-                            self.log(f"偵測到【乘駕車輛】按鈕 (置信度: {conf:.2f})，按下 Enter 選擇...")
-                            direct_input.press_and_release(direct_input.KEY_ENTER, duration=0.5)
+                            
+                            # Calculate proportional offset from "選擇動作" title to "乘駕車輛" button
+                            # ~9% of the client height
+                            hwnd, rect = self.find_game_window()
+                            offset_y = 90  # Default fallback (e.g. for 1080p, 1080 * 0.09 = ~97)
+                            if rect:
+                                height = rect[3] - rect[1]
+                                offset_y = int(height * 0.09)
+                                self.log(f"依據視窗高度 {height} 計算偏移量: {offset_y}px")
+                            
+                            click_x = x
+                            click_y = y + offset_y
+                            
+                            self.log(f"滑鼠先移至乘駕車輛按鈕位置 (座標: {click_x}, {click_y})，等待 0.5 秒以觸發懸停狀態...")
+                            direct_input.set_cursor_pos(click_x, click_y)
+                            time.sleep(0.5)
+                            
+                            self.log("模擬滑鼠點擊「乘駕車輛」按鈕...")
+                            direct_input.mouse_click(click_x, click_y, click_duration=0.15, settle_delay=0.15)
+                            
                             self.update_state("MASTERY_ENTER_UPGRADES")
                             self.log("正在進入車庫並更換乘駕車輛，等待 6 秒過場...")
                             time.sleep(6.0)

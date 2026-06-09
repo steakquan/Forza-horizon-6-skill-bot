@@ -4,14 +4,14 @@ echo ===================================================
 echo   Forza Horizon 6 Skill Bot - 安裝依賴套件
 echo ===================================================
 echo.
-echo   正在安裝所需的 Python 函式庫 (opencv-python, pillow, pywin32)...
+echo   正在安裝所需的 Python 函式庫 (opencv-python, pillow, pywin32, winsdk)...
 echo.
-pip install opencv-python pillow pywin32
+pip install opencv-python pillow pywin32 winsdk
 if errorlevel 1 (
     echo.
     echo   嘗試以 python -m pip 安裝...
     echo.
-    python -m pip install opencv-python pillow pywin32
+    python -m pip install opencv-python pillow pywin32 winsdk
 )
 
 echo.

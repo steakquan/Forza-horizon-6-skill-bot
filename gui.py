@@ -12,7 +12,7 @@ import win32gui
 
 # Import modules from our project
 import direct_input
-from bot import ForzaBot
+from bot import ForzaBot, HAS_WINSDK
 
 # Try to import cv2
 try:
@@ -364,7 +364,7 @@ class BotGUI:
             ("factory_colors.png", "車廠色彩字樣", "塗裝頁面的「車廠色彩」文字區域（用以確認塗裝畫面已完全載入）"),
             ("esc_back.png", "Esc返回按鈕", "購車過場後，底端出現的『ESC返回』按鍵圖示（確認出現後才會按下 Esc 鍵返回）"),
             ("my_cars_tile.png", "「我的車輛」入口", "車庫首頁進入我的車輛的按鈕區域（辨識後按 Enter 進入）"),
-            ("drive_car.png", "「乘駕車輛」字樣", "選擇車輛後跳出的「乘駕車輛」按鈕（辨識後按 Enter）"),
+            ("select_action.png", "選擇動作標題", "選中車輛後跳出的「選擇動作」對話框標題（以此為基準點擊下方的乘駕車輛）"),
             ("upgrades_tuning.png", "「升級套件與調校」", "車庫主選單的「升級套件與調校」按鈕（辨識後滑鼠點擊）"),
             ("car_mastery_button.png", "「車輛熟練度」入口", "升級選單中的「車輛熟練度」按鈕（辨識後滑鼠點擊）")
         ]
@@ -543,7 +543,7 @@ class BotGUI:
             elif state == "MASTERY_DRIVE_PROMPT":
                 self.draw_status_dot("#00e5ff") # Cyan
                 self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
-                self.state_desc.config(text="確認乘駕車輛提示... (尋找：drive_car.png)", fg="#00e5ff")
+                self.state_desc.config(text="確認「選擇動作」提示... (尋找：select_action.png)", fg="#00e5ff")
             elif state == "MASTERY_ENTER_UPGRADES":
                 self.draw_status_dot("#00e5ff") # Cyan
                 self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
@@ -619,7 +619,9 @@ class BotGUI:
             elif mode == "CAR_BUY":
                 required_templates = ["autoshow.png", "lambo_brand.png", "revuelto.png", "factory_colors.png", "esc_back.png"]
             elif mode == "CAR_MASTERY":
-                required_templates = ["my_cars_tile.png", "lambo_brand.png", "revuelto.png", "drive_car.png", "upgrades_tuning.png", "car_mastery_button.png"]
+                required_templates = ["my_cars_tile.png", "lambo_brand.png", "revuelto.png", "upgrades_tuning.png", "car_mastery_button.png"]
+                if not HAS_WINSDK:
+                    required_templates.append("select_action.png")
                 if not self.bot.mastery_grid_topleft or not self.bot.mastery_grid_bottomright:
                     self.log_message("錯誤: 尚未校準技能樹網格座標！請在「圖像校準」中設定。")
                     messagebox.showwarning("警告", "請先完成技能樹「左上角」與「右下角」座標校準再啟動腳本！")
