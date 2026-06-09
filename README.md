@@ -76,10 +76,10 @@ pip install opencv-python pillow pywin32
 6. **自動點熟練度模式使用方式 (Auto Car Mastery Mode)**：
    - **模式切換**：在小助手主畫面上的「選擇掛機模式項目」中勾選 **「自動點熟練度」**。
    - **完成模板校準**：切換至「圖像校準」分頁，依序點擊「擷取」並在遊戲中框選以下四個新模板：
-     - **我的車輛 (`my_cars_tile.png`)**：在車庫首頁時框選該按鈕。
-     - **乘駕車輛 (`drive_car.png`)**：點擊車輛卡片後，在跳出的「乘駕車輛」按鈕上框選。
-     - **升級套件與調校 (`upgrades_tuning.png`)**：在車庫主選單中框選該按鈕。
-     - **車輛熟練度 (`car_mastery_button.png`)**：在升級選單中框選該按鈕。
+      - **我的車輛 (`my_cars_tile.png`)**：在車庫首頁時框選該按鈕。
+      - **選擇動作標題 (`select_action.png`)**：選中車輛後跳出的對話框標題「選擇動作」字樣（以此為基準自動點擊下方的乘駕車輛）。
+      - **升級套件與調校 (`upgrades_tuning.png`)**：在車庫主選單中框選該按鈕。
+      - **車輛熟練度 (`car_mastery_button.png`)**：在升級選單中框選該按鈕。
    - **校準4x4技能樹網格**：在「圖像校準」分頁下方，點選「校準左上角」與「校準右下角」，分別在遊戲進入車輛熟練度畫面時，點選4x4技能樹最左上角與最右下角按鈕的中心位置。
    - **開始點選熟練度**：進入遊戲車庫首頁，按下 **`F10`** 鍵啟動。小助手會自動進入我的車輛、篩選蘭博基尼、依序點選未處理車輛並乘駕（第二次選取自動改用 Enter 避開滾動位移）、進入升級與熟練度頁面、依序解鎖6個技能點、返回車庫大廳並將處理車數加1，接著重複運作。
 
@@ -121,3 +121,16 @@ pip install opencv-python pillow pywin32
 #### 方法 C：利用內建定時器離線掛機
 如果不需要同時使用電腦：
 - 可以在「參數設定」中開啟「自動停止定時」（可選 1 小時、1.5 小時等），並保持遊戲在前台焦點位置。掛機結束後小助手會自動停止，確保電腦省電。
+
+---
+
+## 常見問題與疑難排解 (Troubleshooting)
+
+### 1. 雙擊 `run_bot.bat` 後閃退，或者沒有跳出小助手 GUI 介面？
+- **可能原因 A：未安裝 Python，或安裝時未勾選「Add to PATH」**
+  - **解法**：請確保您的電腦已安裝 Python 3.12 或以上版本。重新執行安裝程式，並**務必勾選「Add Python.exe to PATH」**。
+- **可能原因 B：缺少必要的 Python 套件 (OpenCV, Pillow, pywin32, winsdk 等)**
+  - **解法**：雙擊專案目錄下的 **`install_requirements.bat`** 一鍵安裝依賴庫。
+  - **主控台偵錯模式**：新版的 `run_bot.bat` 已加入自動檢測。若缺少套件，它會自動改用命令提示字元 (CMD) 視窗啟動並顯示 Traceback 錯誤訊息。您可以根據 Traceback 的提示查看是哪個套件出問題，或手動執行 `pip install opencv-python pillow pywin32 winsdk`。
+- **Keep-on-Top / 偵錯別名干擾：Windows 應用程式執行別名干擾**
+  - **解法**：Windows 系統內建的 Microsoft Store python 別名可能被啟用，導致執行 `python` 時被重新導向到 Windows 商店。請至 Windows 設定 -> 應用程式 -> 應用程式執行別名 (App execution aliases)，找到「python.exe」和「pythonw.exe」，並**將它們關閉 (停用)**，然後再次啟動 `run_bot.bat`。

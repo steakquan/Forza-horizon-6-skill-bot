@@ -74,14 +74,13 @@ To ensure the screenshot matching works correctly, configure the graphics settin
   - **Lamborghini Logo (`lambo_brand.png`)**: Draw over the "LAMBORGHINI" manufacturer icon.
   - **Revuelto Card (`revuelto.png`)**: Draw over the "REVUELTO" vehicle card in the store.
   - **Factory Colors (`factory_colors.png`)**: Draw over the "Factory Colors" title in the livery customization page.
-  - **Drive (`drive.png`)**: Draw over the "Drive" prompt that appears after the delivery cutscene ends.
-- **Run**: Navigate to the garage home menu, and press **`F10`**. The bot will automatically buy cars in batches and stop once it reaches the limit of 12.
+- **Run**: Navigate to the garage home menu, and press `F10`. The bot will automatically buy cars in batches and stop once it reaches the limit of 12.
 
 ### 6. Auto Car Mastery Mode
 - **Switch Mode**: Select **"Auto Car Mastery"** on the Dashboard.
 - **Calibrate Templates**: Go to the "Image Calibration" tab, click "Capture" and draw boxes in the game for the following:
   - **My Cars Tile (`my_cars_tile.png`)**: Draw over the "My Cars" button on the garage home menu.
-  - **Drive Car Prompt (`drive_car.png`)**: Draw over the "Drive Car" button in the selection prompt.
+  - **Select Action Title (`select_action.png`)**: Draw over the "Select Action" dialog title that pops up after selecting a car (used as an anchor to click "Drive").
   - **Upgrades & Tuning Tile (`upgrades_tuning.png`)**: Draw over the "Upgrades & Tuning" button on the garage lobby menu.
   - **Car Mastery Entry (`car_mastery_button.png`)**: Draw over the "Car Mastery" button in the upgrade list.
 - **Calibrate Grid**: In the "4x4 Skill Tree Grid Calibration" section, click "Calibrate Top-Left" and "Calibrate Bottom-Right" and click the centers of the top-left and bottom-right nodes on the 4x4 skill tree.
@@ -122,3 +121,16 @@ Since the *Forza Horizon* series uses DirectX 12 rendering and Raw Input, losing
 
 #### Method C: Auto-Stop Timer (For Offline Idle)
 - Enable the "Auto-Stop Timer" in the Settings tab (e.g. 1 hour or 2 hours) and keep the game in the foreground. The bot will automatically close and lock keys when done, conserving PC power.
+
+---
+
+## Troubleshooting
+
+### 1. Double-clicking `run_bot.bat` does not open the GUI (silent crash or brief command window flash)?
+- **Cause A: Python is not installed, or "Add Python to PATH" was not checked during installation.**
+  - **Solution**: Download Python 3.12 or higher. Run the installer and **make sure to check \"Add Python.exe to PATH\"** before installing.
+- **Cause B: Missing required Python dependencies (OpenCV, Pillow, pywin32, winsdk, etc.)**
+  - **Solution**: Double-click **`install_requirements.bat`** to install all required libraries automatically.
+  - **Console Debug Mode**: The updated `run_bot.bat` will automatically fall back to console mode if packages are missing, outputting the exact Traceback error. Check the command window to identify the missing package, or run `pip install opencv-python pillow pywin32 winsdk` manually.
+- **Cause C: Windows App Execution Aliases interference**
+  - **Solution**: Windows has a default alias for python that redirects to the Microsoft Store. Go to Windows Settings -> Apps -> App Execution Aliases, find "python.exe" and "pythonw.exe", and **disable/turn them off**. Then run `run_bot.bat` again.
