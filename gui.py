@@ -909,6 +909,8 @@ class BotGUI:
             
         def on_crop_finished(success, result):
             self.root.deiconify()
+            self.root.lift()
+            self.root.focus_force()
             self.root.update()
             
             if success:
@@ -948,6 +950,8 @@ class BotGUI:
             
         def on_select_finished(success, result):
             self.root.deiconify()
+            self.root.lift()
+            self.root.focus_force()
             self.root.update()
             
             if success:
@@ -1075,6 +1079,8 @@ class CropOverlay:
         self.top = tk.Toplevel(parent)
         self.top.attributes("-fullscreen", True)
         self.top.attributes("-topmost", True)
+        self.top.lift()
+        self.top.focus_force()
         
         self.width = screenshot.width
         self.height = screenshot.height
@@ -1146,6 +1152,8 @@ class CoordinateOverlay:
         self.top = tk.Toplevel(parent)
         self.top.attributes("-fullscreen", True)
         self.top.attributes("-topmost", True)
+        self.top.lift()
+        self.top.focus_force()
         
         self.width = screenshot.width
         self.height = screenshot.height
