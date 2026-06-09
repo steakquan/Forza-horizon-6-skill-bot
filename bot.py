@@ -660,12 +660,12 @@ class ForzaBot:
                             x, y, conf = match
                             
                             # Calculate proportional offset from "選擇動作" title to "乘駕車輛" button
-                            # ~9% of the client height
+                            # ~6.2% of the client height
                             hwnd, rect = self.find_game_window()
-                            offset_y = 90  # Default fallback (e.g. for 1080p, 1080 * 0.09 = ~97)
+                            offset_y = 67  # Default fallback (e.g. for 1080p, 1080 * 0.062 = ~67)
                             if rect:
                                 height = rect[3] - rect[1]
-                                offset_y = int(height * 0.09)
+                                offset_y = int(height * 0.062)
                                 self.log(f"依據視窗高度 {height} 計算偏移量: {offset_y}px")
                             
                             click_x = x
