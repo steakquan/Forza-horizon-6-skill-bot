@@ -463,7 +463,7 @@ class ForzaBot:
                             x, y, conf = match
                             self.log(f"偵測到【REVUELTO】車輛卡片 (置信度: {conf:.2f})")
                             self.log("滑鼠先移至車輛位置，等待 0.5 秒以觸發懸停狀態...")
-                            direct_input.set_cursor_pos(x, y)
+                            direct_input.smooth_move_mouse(x, y, duration=0.3)
                             time.sleep(0.5)
                             self.log("模擬滑鼠點擊選中車輛...")
                             direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.05)
@@ -625,7 +625,7 @@ class ForzaBot:
                             if self.mastery_car_index < len(matches):
                                 x, y, conf = matches[self.mastery_car_index]
                                 self.log(f"滑鼠先移至第 {self.mastery_car_index + 1} 輛未使用過之車輛位置 (座標: {x}, {y})，等待 0.5 秒以觸發懸停狀態...")
-                                direct_input.set_cursor_pos(x, y)
+                                direct_input.smooth_move_mouse(x, y, duration=0.3)
                                 time.sleep(0.5)
                                 self.log(f"模擬滑鼠點擊選中車輛 (置信度: {conf:.2f})...")
                                 direct_input.mouse_click(x, y, click_duration=0.15, settle_delay=0.05)
@@ -672,7 +672,7 @@ class ForzaBot:
                             click_y = y + offset_y
                             
                             self.log(f"滑鼠先移至乘駕車輛按鈕位置 (座標: {click_x}, {click_y})，等待 0.5 秒以觸發懸停狀態...")
-                            direct_input.set_cursor_pos(click_x, click_y)
+                            direct_input.smooth_move_mouse(click_x, click_y, duration=0.3)
                             time.sleep(0.5)
                             
                             self.log("模擬滑鼠點擊「乘駕車輛」按鈕...")
@@ -749,7 +749,7 @@ class ForzaBot:
                             abs_y = int(offset_y + rel_y)
                             
                             self.log(f"滑鼠先移至技能點 [{step_idx + 1}/6]：格點 (row={row}, col={col}) -> 螢幕座標 ({abs_x}, {abs_y})，等待 0.5 秒以觸發懸停狀態...")
-                            direct_input.set_cursor_pos(abs_x, abs_y)
+                            direct_input.smooth_move_mouse(abs_x, abs_y, duration=0.3)
                             time.sleep(0.5)
                             
                             self.log("模擬滑鼠點擊解鎖技能點...")

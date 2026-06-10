@@ -95,9 +95,39 @@ def press_and_release(scan_code, duration=0.5):
     time.sleep(0.5)  # 0.5s delay between keys
 
 # Mouse Actions
+class POINT(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
+
+def get_cursor_pos():
+    """Gets the current cursor position using Windows API."""
+    pt = POINT()
+    ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
+    return pt.x, pt.y
+
 def set_cursor_pos(x, y):
     """Moves the cursor to absolute screen coordinates (x, y)."""
     ctypes.windll.user32.SetCursorPos(int(x), int(y))
+
+def smooth_move_mouse(target_x, target_y, duration=0.3):
+    """Smoothly moves the mouse from current position to target position using a quadratic ease-out curve."""
+    start_x, start_y = get_cursor_pos()
+    
+    # Calculate steps (aim for approx 15ms per step for smooth 60fps)
+    steps = int(duration / 0.015)
+    if steps < 5:
+        steps = 5
+        
+    for i in range(1, steps + 1):
+        t = i / steps
+        # Quadratic ease-out curve: t_eased = 1 - (1 - t)^2
+        t_eased = 1 - (1 - t) * (1 - t)
+        curr_x = int(start_x + (target_x - start_x) * t_eased)
+        curr_y = int(start_y + (target_y - start_y) * t_eased)
+        set_cursor_pos(curr_x, curr_y)
+        time.sleep(0.015)
+        
+    # Ensure final position is exact target
+    set_cursor_pos(target_x, target_y)
 
 def mouse_click(x, y, click_duration=0.1, settle_delay=0.1):
     """Moves the mouse to (x, y) and performs a left-click."""
