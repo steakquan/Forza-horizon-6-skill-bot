@@ -78,6 +78,7 @@ To ensure the screenshot matching works correctly, configure the graphics settin
 
 ### 6. Auto Car Mastery Mode
 - **Switch Mode**: Select **"Auto Car Mastery"** on the Dashboard.
+- **⚠️ Important Pre-requisite**: Before starting the Auto Car Mastery script, **you must first manually fully unlock the skill tree nodes for one Revuelto**. After manually unlocking one vehicle's skills, **make sure to return to the "My Cars" garage screen** before starting the automatic mastery script (or pressing F10).
 - **Calibrate Templates**: Go to the "Image Calibration" tab, click "Capture" and draw boxes in the game for the following:
   - **My Cars Tile (`my_cars_tile.png`)**: Draw over the "My Cars" button on the garage home menu.
   - **Select Action Title (`select_action.png`)**: Draw over the "Select Action" dialog title that pops up after selecting a car (used as an anchor to click "Drive").
