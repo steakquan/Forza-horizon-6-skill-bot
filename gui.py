@@ -480,6 +480,8 @@ class BotGUI:
                 self.draw_status_dot("#ef4444") # Red
                 self.status_text.config(text="已停止 (IDLE)", fg="#ef4444")
                 self.state_desc.config(text="未啟動 - 請按 F10 鍵或點擊下方啟動按鈕", fg="#ffffff")
+                self.btn_start.config(state="normal")
+                self.btn_stop.config(state="disabled")
             elif state == "WAIT_FOR_SETTLEMENT":
                 self.draw_status_dot("#00e5ff") # Cyan
                 self.status_text.config(text="偵測中 (ACTIVE)", fg="#00e5ff")
