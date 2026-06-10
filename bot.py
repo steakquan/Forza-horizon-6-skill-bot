@@ -748,7 +748,11 @@ class ForzaBot:
                             abs_x = int(offset_x + rel_x)
                             abs_y = int(offset_y + rel_y)
                             
-                            self.log(f"點選技能點 [{step_idx + 1}/6]：格點 (row={row}, col={col}) -> 螢幕座標 ({abs_x}, {abs_y})")
+                            self.log(f"滑鼠先移至技能點 [{step_idx + 1}/6]：格點 (row={row}, col={col}) -> 螢幕座標 ({abs_x}, {abs_y})，等待 0.5 秒以觸發懸停狀態...")
+                            direct_input.set_cursor_pos(abs_x, abs_y)
+                            time.sleep(0.5)
+                            
+                            self.log("模擬滑鼠點擊解鎖技能點...")
                             direct_input.mouse_click(abs_x, abs_y, click_duration=0.15, settle_delay=0.1)
                             time.sleep(0.5)
                             
@@ -769,6 +773,14 @@ class ForzaBot:
                         self.mastery_car_index += 1
                         self.save_config()
                         self.log(f"該車解鎖完成。切換至下一輛，目前索引：{self.mastery_car_index}")
+                        
+                        if self.mastery_car_index >= 12:
+                            self.log("已成功處理完 12 輛車的車輛熟練度，自動重置已點處理車數為 0，腳本停止。")
+                            self.mastery_car_index = 0
+                            self.save_config()
+                            self.stop()
+                            break
+                            
                         self.update_state("MASTERY_START")
                         time.sleep(1.0)
                         
